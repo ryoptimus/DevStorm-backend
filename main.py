@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 import mysql.connector
 from mysql.connector import errorcode, IntegrityError
 from dotenv import load_dotenv
+from groq import Groq
 
 app = Flask(__name__)
 
@@ -11,10 +12,6 @@ def hello_world():
     return "Hello world!"
 
 load_dotenv()
-
-print(os.getenv("ADMIN_USER"))
-print(os.getenv("ADMIN_PASSWORD"))
-print(os.getenv("ENDPOINT"))
 
 def get_db_connection():
   try:
@@ -156,6 +153,34 @@ def delete_record(username):
     return jsonify({"message": "User deleted successfully."}), 200
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
+
+@app.route('/prompt', methods=['POST'])
+def prompt_ai():
+  data = request.get_json()
+  prompt = data['prompt']
+  if not prompt:
+    # 400 Bad Request: No prompt provided
+    return jsonify({"error": "No prompt provided"}), 400
+  try:
+    client = Groq(api_key=os.getenv("GROQ_KEY"),)
+    response = client.chat.completions.create(
+      messages=[
+        {
+          "role": "user",
+          "content": prompt
+        }
+      ],
+      model="llama3-8b-8192",
+      max_tokens=100
+    )
+    generated_text = response.choices[0].message.content
+    # print(response.choices[0].message.content)
+    # 200 OK: For a successful request that returns data
+    return jsonify({"response": generated_text}), 200
+  except Exception as e:
+    print(f"Error calling OpenAI API: {e}")
+    # 500 Internal Server Error: Generic server-side failures
+    return jsonify({"error": "Failed to call AI"}), 500
 
 if __name__ == "__main__":
   create_users_table()
