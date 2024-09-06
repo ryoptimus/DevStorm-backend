@@ -178,7 +178,7 @@ def prompt_ai():
     # 200 OK: For a successful request that returns data
     return jsonify({"response": generated_text}), 200
   except Exception as e:
-    print(f"Error calling OpenAI API: {e}")
+    print(f"Error calling Groq API: {e}")
     # 500 Internal Server Error: Generic server-side failures
     return jsonify({"error": "Failed to call AI"}), 500
 
