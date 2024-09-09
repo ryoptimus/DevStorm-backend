@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from groq import Groq
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r'/user': {'origins': 'http://localhost:3000'}})
 
 @app.route("/")
 def hello_world():
