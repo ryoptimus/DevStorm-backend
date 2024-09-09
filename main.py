@@ -1,13 +1,15 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, session
 from flask_cors import CORS
 import mysql.connector
 from mysql.connector import errorcode, IntegrityError
 from dotenv import load_dotenv
 from groq import Groq
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-CORS(app, resources={r'/user': {'origins': 'http://localhost:3000'}})
+CORS(app, resources={r'/user': {'origins': 'http://localhost:3000'},
+                     r'/register': {'origins': 'http://localhost:3000'}})
 
 @app.route("/")
 def hello_world():
@@ -55,11 +57,11 @@ def create_users_table():
   else:
     print("Failed to connect to database. Could not create table.")
 
-@app.route('/user', methods=['POST'])
-def add_user():
+@app.route('/register', methods=['POST'])
+def register_user():
   data = request.get_json()
   username = data['username']
-  password = data['password']
+  password = generate_password_hash(data['password'])
   connection = get_db_connection()
   if connection:
     cursor = connection.cursor()
@@ -140,6 +142,29 @@ def update_record(id):
     return jsonify({"message": "User updated successfully"}), 200
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
+
+@app.route('/login', methods=['POST'])
+def login():
+  data = request.get_json()
+  username = data['username']
+  password = data['password']
+    
+  connection = get_db_connection()
+  if connection:
+    cursor = connection.cursor()
+    query = "SELECT * FROM users WHERE username = %s"
+    cursor.execute(query, (username,))
+    user = cursor.fetchone()
+    if user and check_password_hash(user['password'], password):
+      session['user_id'] = user['id']
+      # 200 OK: For a successful request
+      return jsonify({"message": "Login verified"}), 200
+    else:
+      # 401 Unauthorized: Request lacks valid authentication credentials
+      return jsonify({"error": "Invalid credentials"}), 401
+  # 500 Internal Server Error: Generic server-side failures
+  return jsonify({"error": "Failed to connect to database"}), 500
+        
 
 @app.route('/user/<username>', methods=['DELETE'])
 def delete_record(username):
