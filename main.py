@@ -1,11 +1,13 @@
 import os
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import mysql.connector
 from mysql.connector import errorcode, IntegrityError
 from dotenv import load_dotenv
 from groq import Groq
 
 app = Flask(__name__)
+CORS(app)
 
 @app.route("/")
 def hello_world():
