@@ -11,6 +11,8 @@ from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import JWTManager
 
+load_dotenv()
+
 app = Flask(__name__)
 # Configure CORS
 CORS(app, resources={r'/user': {'origins': 'http://localhost:3000'},
@@ -25,8 +27,6 @@ jwt = JWTManager(app)
 @app.route("/")
 def hello_world():
     return "Hello world!"
-
-load_dotenv()
 
 def get_db_connection():
   try:
