@@ -6,11 +6,21 @@ from mysql.connector import errorcode, IntegrityError
 from dotenv import load_dotenv
 from groq import Groq
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_jwt_extended import create_access_token
+from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import jwt_required
+from flask_jwt_extended import JWTManager
 
 app = Flask(__name__)
+# Configure CORS
 CORS(app, resources={r'/user': {'origins': 'http://localhost:3000'},
                      r'/register': {'origins': 'http://localhost:3000'},
-                     r'/prompt': {'origins': 'http://localhost:3000'}})
+                     r'/prompt': {'origins': 'http://localhost:3000'},
+                     r'/login': {'origins': 'http://localhost:3000'}})
+
+# Setup the Flask-JWT-Extended extension
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+jwt = JWTManager(app)
 
 @app.route("/")
 def hello_world():
@@ -70,8 +80,9 @@ def register_user():
     try:
       cursor.execute(query, (username, password,))
       connection.commit()
+      access_token = create_access_token(identity=username)
       # 201 Created: User added/created successfully
-      return jsonify({"message": "User added successfully."}), 201
+      return jsonify({"message": "User added successfully", "access_token": access_token}), 201
     except IntegrityError as e:
       # 400 Bad Request: Username already exists
       return jsonify({"error": "Username already exists."}), 400
@@ -173,8 +184,9 @@ def login():
     user = cursor.fetchone()
     if user and check_password_hash(user['password'], password):
       session['user_id'] = user['id']
+      access_token = create_access_token(identity=username)
       # 200 OK: For a successful request
-      return jsonify({"message": "Login verified"}), 200
+      return jsonify({"message": "Login verified", "access_token": access_token}), 200
     else:
       # 401 Unauthorized: Request lacks valid authentication credentials
       return jsonify({"error": "Invalid credentials"}), 401
@@ -182,7 +194,9 @@ def login():
   return jsonify({"error": "Failed to connect to database"}), 500
 
 @app.route('/prompt', methods=['POST'])
+@jwt_required()
 def prompt_ai():
+  current_user = get_jwt_identity()
   data = request.get_json()
   roles = data['role']
   technologies = data['technology']
