@@ -9,7 +9,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 CORS(app, resources={r'/user': {'origins': 'http://localhost:3000'},
-                     r'/register': {'origins': 'http://localhost:3000'}})
+                     r'/register': {'origins': 'http://localhost:3000'},
+                     r'/prompt': {'origins': 'http://localhost:3000'}})
 
 @app.route("/")
 def hello_world():
@@ -143,6 +144,21 @@ def update_record(id):
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
 
+@app.route('/user/<username>', methods=['DELETE'])
+def delete_record(username):
+  connection = get_db_connection()
+  if connection:
+    cursor = connection.cursor()
+    query = "DELETE FROM users WHERE username = %s"
+    cursor.execute(query, (username,))
+    connection.commit()
+    cursor.close()
+    connection.close()
+    # 200 OK: For a successful request that returns data
+    return jsonify({"message": "User deleted successfully."}), 200
+  # 500 Internal Server Error: Generic server-side failures
+  return jsonify({"error": "Failed to connect to database"}), 500
+
 @app.route('/login', methods=['POST'])
 def login():
   data = request.get_json()
@@ -164,28 +180,12 @@ def login():
       return jsonify({"error": "Invalid credentials"}), 401
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
-        
-
-@app.route('/user/<username>', methods=['DELETE'])
-def delete_record(username):
-  connection = get_db_connection()
-  if connection:
-    cursor = connection.cursor()
-    query = "DELETE FROM users WHERE username = %s"
-    cursor.execute(query, (username,))
-    connection.commit()
-    cursor.close()
-    connection.close()
-    # 200 OK: For a successful request that returns data
-    return jsonify({"message": "User deleted successfully."}), 200
-  # 500 Internal Server Error: Generic server-side failures
-  return jsonify({"error": "Failed to connect to database"}), 500
 
 @app.route('/prompt', methods=['POST'])
 def prompt_ai():
   data = request.get_json()
-  prompt = data['prompt']
-  if not prompt:
+  print(data)
+  if not data:
     # 400 Bad Request: No prompt provided
     return jsonify({"error": "No prompt provided"}), 400
   try:
@@ -194,7 +194,7 @@ def prompt_ai():
       messages=[
         {
           "role": "user",
-          "content": prompt
+          "content": "Why do apples float"
         }
       ],
       model="llama3-8b-8192",
