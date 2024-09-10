@@ -5,7 +5,7 @@ import mysql.connector
 from mysql.connector import errorcode, IntegrityError
 from dotenv import load_dotenv
 from groq import Groq
-from werkzeug.security import generate_password_hash, check_password_hash
+import hashlib
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
@@ -19,6 +19,7 @@ CORS(app, resources={r'/user': {'origins': 'http://localhost:3000'},
                      r'/register': {'origins': 'http://localhost:3000'},
                      r'/prompt': {'origins': 'http://localhost:3000'},
                      r'/login': {'origins': 'http://localhost:3000'}})
+
 
 # Setup the Flask-JWT-Extended extension
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
@@ -72,13 +73,14 @@ def create_users_table():
 def register_user():
   data = request.get_json()
   username = data['username']
-  password = generate_password_hash(data['password'])
+  password = data['password']
+  hashed_password = hash_password(password)
   connection = get_db_connection()
   if connection:
     cursor = connection.cursor()
     query = "INSERT INTO users (username, password) VALUES (%s, %s)"
     try:
-      cursor.execute(query, (username, password,))
+      cursor.execute(query, (username, hashed_password,))
       connection.commit()
       access_token = create_access_token(identity=username)
       # 201 Created: User added/created successfully
@@ -175,6 +177,7 @@ def login():
   data = request.get_json()
   username = data['username']
   password = data['password']
+  hashed_password = hash_password(password)
     
   connection = get_db_connection()
   if connection:
@@ -182,8 +185,11 @@ def login():
     query = "SELECT * FROM users WHERE username = %s"
     cursor.execute(query, (username,))
     user = cursor.fetchone()
-    if user and check_password_hash(user['password'], password):
-      session['user_id'] = user['id']
+    cursor.close()
+    connection.close()   
+    stored_hash = user[2]
+   
+    if user and hashed_password == stored_hash:
       access_token = create_access_token(identity=username)
       # 200 OK: For a successful request
       return jsonify({"message": "Login verified", "access_token": access_token}), 200
@@ -226,6 +232,10 @@ def prompt_ai():
     print(f"Error calling Groq API: {e}")
     # 500 Internal Server Error: Generic server-side failures
     return jsonify({"error": "Failed to call AI"}), 500
+  
+def hash_password(password: str) -> str:
+    # Hash a password using MD5
+    return hashlib.md5(password.encode()).hexdigest()
   
 def engineer_prompt(roles, technologies, industries):
 # ex.
