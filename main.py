@@ -184,21 +184,25 @@ def login():
 @app.route('/prompt', methods=['POST'])
 def prompt_ai():
   data = request.get_json()
-  print(data)
+  roles = data['role']
+  technologies = data['technology']
+  industries = data['industries']
+  # print(engineer_prompt(roles, technologies, industries))
+  prompt = engineer_prompt(roles, technologies, industries)
   if not data:
-    # 400 Bad Request: No prompt provided
-    return jsonify({"error": "No prompt provided"}), 400
+    # 400 Bad Request: No inputs provided
+    return jsonify({"error": "No inputs provided"}), 400
   try:
     client = Groq(api_key=os.getenv("GROQ_KEY"),)
     response = client.chat.completions.create(
-      messages=[
+      messages =[
         {
           "role": "user",
-          "content": "Why do apples float"
+          "content": prompt
         }
       ],
       model="llama3-8b-8192",
-      max_tokens=100
+      max_tokens=150
     )
     generated_text = response.choices[0].message.content
     # print(response.choices[0].message.content)
@@ -208,6 +212,27 @@ def prompt_ai():
     print(f"Error calling Groq API: {e}")
     # 500 Internal Server Error: Generic server-side failures
     return jsonify({"error": "Failed to call AI"}), 500
+  
+def engineer_prompt(roles, technologies, industries):
+# ex.
+# I am a role[0] and role[1] using technology[0] and technology[1] and technology[2] in the 
+# industries[0] industry. Give me project ideas.
+  if len(industries) > 1:
+    prompt = "I am a " + conjunct_me([role.lower() for role in roles]) + " using " + conjunct_me(technologies) + " in the " + conjunct_me([industry.lower() for industry in industries]) + " industries. Give me project ideas."
+  else:
+    prompt = "I am a " + conjunct_me([role.lower() for role in roles]) + " using " + conjunct_me(technologies) + " in the " + conjunct_me([industry.lower() for industry in industries]) + " industry. Give me project ideas."
+  return prompt
+
+def conjunct_me(list):
+  if len(list) > 2:
+    joined_string = ", ".join(list[:-1]) + ", and " + list[-1]
+    return joined_string
+  elif len(list) == 2:
+    joined_string = " and ".join(list)
+    return joined_string
+  else:
+    return list[0]
+  
 
 if __name__ == "__main__":
   create_users_table()
