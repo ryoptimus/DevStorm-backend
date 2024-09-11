@@ -62,11 +62,13 @@ def create_users_table():
                 password VARCHAR(32)
             );
         """)
+      # Commit changes
       connection.commit()
       print("Users table created.")
     except mysql.connector.Error as e:
       print(f"Error creating table: {e}")
     finally:
+      # Close resources
       cursor.close()
       connection.close()
   else:
@@ -85,7 +87,9 @@ def register_user():
     query = "INSERT INTO users (username, password) VALUES (%s, %s)"
     try:
       cursor.execute(query, (username, hashed_password,))
+      # Commit changes
       connection.commit()
+      # Generate access token for new user
       access_token = create_access_token(identity=username)
       response_data = {
         "message": "User added successfully",
@@ -97,6 +101,7 @@ def register_user():
       # 400 Bad Request: Username already exists
       return jsonify({"error": "Username already exists."}), 400
     finally:
+      # Close resources
       cursor.close()
       connection.close()
   # 500 Internal Server Error: Generic server-side failures
@@ -168,14 +173,20 @@ def update_record(id):
   password = data['password']
   connection = get_db_connection()
   if connection:
-    cursor = connection.cursor()
-    query = "UPDATE users SET username = %s, password = %s WHERE id = %s"
-    cursor.execute(query, (username, password, id))
-    connection.commit()
-    cursor.close()
-    connection.close()
-    # 200 OK: For a successful request that returns data
-    return jsonify({"message": "User updated successfully"}), 200
+    try:
+      cursor = connection.cursor()
+      query = "UPDATE users SET username = %s, password = %s WHERE id = %s"
+      cursor.execute(query, (username, password, id))
+      connection.commit()
+      # 200 OK: For a successful request
+      return jsonify({"message": "User updated successfully"}), 200
+    except mysql.connector.Error as e:
+      # 500 Internal Server Error
+      return jsonify({"error": f"Database error: {e}"}), 500
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
 
@@ -184,14 +195,21 @@ def update_record(id):
 def delete_record(username):
   connection = get_db_connection()
   if connection:
-    cursor = connection.cursor()
-    query = "DELETE FROM users WHERE username = %s"
-    cursor.execute(query, (username,))
-    connection.commit()
-    cursor.close()
-    connection.close()
-    # 200 OK: For a successful request that returns data
-    return jsonify({"message": "User deleted successfully."}), 200
+    try:
+      cursor = connection.cursor()
+      query = "DELETE FROM users WHERE username = %s"
+      cursor.execute(query, (username,))
+      # Commit changes
+      connection.commit()
+      # 200 OK: For a successful request
+      return jsonify({"message": "User deleted successfully."}), 200
+    except mysql.connector.Error as e:
+      # 500 Internal Server Error
+      return jsonify({"error": f"Database error: {e}"}), 500
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
 
@@ -241,8 +259,7 @@ class ProjectIdea(BaseModel):
 def prompt_ai():
   # Retrieve user identity from the JWT
   current_user = get_jwt_identity()
-  print(f"{current_user} is authenticated.")
-  
+  print(f"User '{current_user}' is authenticated.")
   data = request.get_json()
   roles = data['role']
   technologies = data['technology']
@@ -253,6 +270,7 @@ def prompt_ai():
     # 400 Bad Request: No inputs provided
     return jsonify({"error": "No inputs provided"}), 400
   try:
+    # Initialize Groq instance
     client = Groq(api_key=os.getenv("GROQ_KEY"),)
     response = client.chat.completions.create(
       messages=[
@@ -284,9 +302,6 @@ def prompt_ai():
       response_format={"type": "json_object"},
     )
     generated_text = response.choices[0].message.content
-    print(f"response.choices[0].message: {response.choices[0].message}")
-    print(f"response.choices[0].message.content: {generated_text}")
-    print(response.usage)
     # 200 OK: For a successful request that returns data
     return jsonify({"response": generated_text}), 200
   except Exception as e:
@@ -297,12 +312,12 @@ def prompt_ai():
 def hash_password(password: str) -> str:
     # Hash a password using MD5
     return hashlib.md5(password.encode()).hexdigest()
-  
-def engineer_prompt(roles, technologies, industries):
-  # Parse inputs lists to engineer prompt
-  # Prompt example:
-  #   I am a role[0] and role[1] using technology[0] and technology[1] and technology[2] in the 
-  #   industries[0] industry. Generate a project idea.
+
+# PROMPT helper: parse inputs lists to engineer prompt
+# Prompt example:
+#   I am a role[0] and role[1] using technology[0] and technology[1] and technology[2] in the 
+#   industries[0] industry. Generate a project idea.
+def engineer_prompt(roles, technologies, industries) -> str:
   if len(industries) > 1:
     prompt = (
       "I am a " + conjunct_me([role.lower() for role in roles]) +
@@ -319,7 +334,7 @@ def engineer_prompt(roles, technologies, industries):
       )
   return prompt
 
-# Conjoin list of things using commas and/or 'and'
+# PROMPT helper: conjoin list of things using commas and/or 'and'
 def conjunct_me(list):
   if len(list) > 2:
     joined_string = ", ".join(list[:-1]) + ", and " + list[-1]
