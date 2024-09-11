@@ -11,7 +11,6 @@ Technologies used:
 * Flask
 * MySQL
 * AWS RDS
-* CORS
 * JWT
 
 ## Setup Environment
