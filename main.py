@@ -18,10 +18,10 @@ load_dotenv()
 
 app = Flask(__name__)
 # Configure CORS
-CORS(app, resources={r'/user': {'origins': 'http://localhost:3000'},
-                     r'/register': {'origins': 'http://localhost:3000'},
-                     r'/prompt': {'origins': 'http://localhost:3000'},
-                     r'/login': {'origins': 'http://localhost:3000'}})
+CORS(app, resources={r'/user': {'origins': os.getenv("FRONTEND")},
+                     r'/register': {'origins': os.getenv("FRONTEND")},
+                     r'/api/prompt': {'origins': os.getenv("FRONTEND")},
+                     r'/login': {'origins': os.getenv("FRONTEND")}})
 
 
 # Setup the Flask-JWT-Extended extension
@@ -40,7 +40,7 @@ def get_db_connection():
       password=os.getenv("ADMIN_PASSWORD"), 
       host=os.getenv("ENDPOINT"), 
       port=3306, 
-      database="flaskproject"
+      database=os.getenv("DB_NAME")
     )
     return connection
   except mysql.connector.Error as e:
@@ -118,6 +118,7 @@ def get_user(username):
     cursor.execute(query, (username,))
     # Check that cursor did not return none
     user = cursor.fetchone()
+    # Close resources
     cursor.close()
     connection.close()
     if user:
@@ -265,19 +266,18 @@ class ProjectIdea(BaseModel):
     steps: List[str]
 
 # PROMPT
-@app.route('/prompt', methods=['POST'])
+@app.route('/api/prompt', methods=['POST'])
 # Ensure route /prompt can only be accessed by users with valid JWT
 @jwt_required()
 def prompt_ai():
   # Retrieve user identity from the JWT
   current_user = get_jwt_identity()
-  print(f"User '{current_user}' is authenticated.")
+  # print(f"User '{current_user}' is authenticated.")
   data = request.get_json()
   roles = data['role']
   technologies = data['technology']
   industries = data['industries']
   prompt = engineer_prompt(roles, technologies, industries)
-  print(prompt)
   if not data:
     # 400 Bad Request: No inputs provided
     return jsonify({"error": "No inputs provided"}), 400
