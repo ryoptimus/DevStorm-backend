@@ -32,6 +32,7 @@ jwt = JWTManager(app)
 def hello_world():
     return "Hello world!"
 
+# Connect to database
 def get_db_connection():
   try:
     connection = mysql.connector.connect(
@@ -46,6 +47,7 @@ def get_db_connection():
     print(f"error: {e}")
     return None
 
+# Generate table to store user information
 def create_users_table():
   connection = get_db_connection()
   if connection:
@@ -132,6 +134,7 @@ def get_user(username):
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
 
+# GET ALL
 @app.route('/user', methods=['GET'])
 def get_all_users():
   connection = get_db_connection()
@@ -159,6 +162,7 @@ def get_all_users():
       # 500 Internal Server Error: Generic server-side failures
       return jsonify({"error": str(e)}), 500
     finally:
+      # Close resources
       cursor.close()
       connection.close()
   # 500 Internal Server Error: Generic server-side failures
@@ -228,21 +232,29 @@ def login():
     query = "SELECT * FROM users WHERE username = %s"
     cursor.execute(query, (username,))
     user = cursor.fetchone()
+    # Close resources
     cursor.close()
     connection.close()
-      
-    stored_hash = user[2]
-    if user and hashed_password == stored_hash:
-      access_token = create_access_token(identity=username)
-      response_data = {
-        "message": "Login verified",
-        "access_token": access_token
-      }
-      # 200 OK: For a successful request
-      return jsonify(response_data), 200
+    
+    # Check if user is found
+    if user:
+      # Retrieve stored hash from user 
+      stored_hash = user[2]
+      # Check that passwords match
+      if hashed_password == stored_hash:
+        access_token = create_access_token(identity=username)
+        response_data = {
+          "message": "Login verified",
+          "access_token": access_token
+        }
+        # 200 OK: For a successful request
+        return jsonify(response_data), 200
+      else:
+        # 401 Unauthorized: Request lacks valid authentication credentials
+        return jsonify({"error": "Invalid credentials"}), 401
     else:
-      # 401 Unauthorized: Request lacks valid authentication credentials
-      return jsonify({"error": "Invalid credentials"}), 401
+      # 401 Unauthorized: User not found
+      return jsonify({"error": "User not found"}), 401
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
 
@@ -305,7 +317,6 @@ def prompt_ai():
     # 200 OK: For a successful request that returns data
     return jsonify({"response": generated_text}), 200
   except Exception as e:
-    print(f"Error calling Groq API: {e}")
     # 500 Internal Server Error: Generic server-side failures
     return jsonify({"error": "Failed to call AI"}), 500
   
