@@ -6,13 +6,13 @@ import mysql.connector
 from mysql.connector import IntegrityError
 from dotenv import load_dotenv
 from groq import Groq
-import hashlib
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import JWTManager
 from typing import List, Optional
 from pydantic import BaseModel
+from flask_bcrypt import Bcrypt
 
 load_dotenv()
 
@@ -27,6 +27,9 @@ CORS(app, resources={r'/user': {'origins': os.getenv("FRONTEND")},
 # Setup the Flask-JWT-Extended extension
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 jwt = JWTManager(app)
+
+# Create bcrypt object
+bcrypt = Bcrypt(app)
 
 @app.route("/")
 def hello_world():
@@ -54,19 +57,18 @@ def create_users_table():
     cursor = connection.cursor()
     try:
       # Drop previous table of same name if one exists
-      cursor.execute("DROP TABLE IF EXISTS users;")
-      print("Finished dropping table (if existed).")
+      # cursor.execute("DROP TABLE IF EXISTS users;")
+      # print("Finished dropping table (if existed).")
       # Create table
       cursor.execute("""
           CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY, 
                 username VARCHAR(50) UNIQUE, 
-                password VARCHAR(32)
+                password VARCHAR(60)
             );
         """)
       # Commit changes
       connection.commit()
-      print("Users table created.")
     except mysql.connector.Error as e:
       print(f"Error creating table: {e}")
     finally:
@@ -224,7 +226,6 @@ def login():
   data = request.get_json()
   username = data['username']
   password = data['password']
-  hashed_password = hash_password(password)
     
   connection = get_db_connection()
   if connection:
@@ -242,7 +243,7 @@ def login():
       # Retrieve stored hash from user 
       stored_hash = user[2]
       # Check that passwords match
-      if hashed_password == stored_hash:
+      if verify_password(password, stored_hash):
         access_token = create_access_token(identity=username)
         response_data = {
           "message": "Login verified",
@@ -319,15 +320,20 @@ def prompt_ai():
   except Exception as e:
     # 500 Internal Server Error: Generic server-side failures
     return jsonify({"error": "Failed to call AI"}), 500
+
+# LOGIN and REGISTER helpers: hash and verify passwords using bcrypt
+def hash_password(password: str):
+    # Utilize bcrypt with an automatically generated salt
+    return bcrypt.generate_password_hash(password)
   
-def hash_password(password: str) -> str:
-    # Hash a password using MD5
-    return hashlib.md5(password.encode()).hexdigest()
+def verify_password(plain_password, hashed_password) -> bool:
+  # Verify the hashed password
+  return bcrypt.check_password_hash(hashed_password, plain_password)
 
 # PROMPT helper: parse inputs lists to engineer prompt
 # Prompt example:
-#   I am a role[0] and role[1] using technology[0] and technology[1] and technology[2] in the 
-#   industries[0] industry. Generate a project idea.
+#   I am a role[0] and role[1] using technology[0] and technology[1] 
+#   and technology[2] in the industries[0] industry. Generate a project idea.
 def engineer_prompt(roles, technologies, industries) -> str:
   if len(industries) > 1:
     prompt = (
@@ -355,7 +361,8 @@ def conjunct_me(list):
     return joined_string
   else:
     return list[0]
- 
+
+create_users_table()
+  
 if __name__ == "__main__":
-  create_users_table()
   app.run(debug=True)
