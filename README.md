@@ -2,8 +2,8 @@
 Frontend can be found here: https://github.com/novoaj/brainstormai-frontend
 
 ## Description
-This document specifies how our API works to perform CRUD operations with our MySQL database 
-and interface with a Groq LLM API to generate project ideas catering to users' individual strengths 
+Our API works to perform CRUD operations with our MySQL database and interface with 
+Groq's LLM API to generate project ideas catering to users' individual strengths 
 and interests within programming. 
 
 Technologies used: 
