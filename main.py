@@ -10,7 +10,7 @@ from flask_jwt_extended import create_access_token
 from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import JWTManager
-from typing import List, Optional
+from typing import List
 from pydantic import BaseModel
 from flask_bcrypt import Bcrypt
 
@@ -77,39 +77,6 @@ def create_users_table():
       connection.close()
   else:
     print("Failed to connect to database. Could not create table.")
-
-# REGISTER
-@app.route('/register', methods=['POST'])
-def register_user():
-  data = request.get_json()
-  username = data['username']
-  password = data['password']
-  hashed_password = hash_password(password)
-  connection = get_db_connection()
-  if connection:
-    cursor = connection.cursor()
-    query = "INSERT INTO users (username, password) VALUES (%s, %s)"
-    try:
-      cursor.execute(query, (username, hashed_password,))
-      # Commit changes
-      connection.commit()
-      # Generate access token for new user
-      access_token = create_access_token(identity=username)
-      response_data = {
-        "message": "User added successfully",
-        "access_token": access_token
-      }
-      # 201 Created: User added/created successfully
-      return jsonify(response_data), 201
-    except IntegrityError as e:
-      # 400 Bad Request: Username already exists
-      return jsonify({"error": "Username already exists."}), 400
-    finally:
-      # Close resources
-      cursor.close()
-      connection.close()
-  # 500 Internal Server Error: Generic server-side failures
-  return jsonify({"error": "Failed to connect to database"}), 500
 
 @app.route('/user/<username>', methods=['GET'])
 def get_user(username):
@@ -213,6 +180,39 @@ def delete_record(username):
     except mysql.connector.Error as e:
       # 500 Internal Server Error
       return jsonify({"error": f"Database error: {e}"}), 500
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
+  # 500 Internal Server Error: Generic server-side failures
+  return jsonify({"error": "Failed to connect to database"}), 500
+
+# REGISTER
+@app.route('/register', methods=['POST'])
+def register_user():
+  data = request.get_json()
+  username = data['username']
+  password = data['password']
+  hashed_password = hash_password(password)
+  connection = get_db_connection()
+  if connection:
+    cursor = connection.cursor()
+    query = "INSERT INTO users (username, password) VALUES (%s, %s)"
+    try:
+      cursor.execute(query, (username, hashed_password,))
+      # Commit changes
+      connection.commit()
+      # Generate access token for new user
+      access_token = create_access_token(identity=username)
+      response_data = {
+        "message": "User added successfully",
+        "access_token": access_token
+      }
+      # 201 Created: User added/created successfully
+      return jsonify(response_data), 201
+    except IntegrityError as e:
+      # 400 Bad Request: Username already exists
+      return jsonify({"error": "Username already exists."}), 400
     finally:
       # Close resources
       cursor.close()
