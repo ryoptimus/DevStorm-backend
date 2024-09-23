@@ -6,26 +6,47 @@ import mysql.connector
 from mysql.connector import IntegrityError
 from dotenv import load_dotenv
 from groq import Groq
-from flask_jwt_extended import create_access_token
-from flask_jwt_extended import get_jwt_identity
-from flask_jwt_extended import jwt_required
-from flask_jwt_extended import JWTManager
-from typing import List
+from flask_jwt_extended import (
+    JWTManager, create_access_token, create_refresh_token,
+    jwt_required, get_jwt_identity, set_access_cookies, set_refresh_cookies,
+    unset_jwt_cookies
+)
 from pydantic import BaseModel
 from flask_bcrypt import Bcrypt
+from typing import List
+from datetime import timedelta
 
 load_dotenv()
 
 app = Flask(__name__)
 # Configure CORS
-CORS(app, resources={r'/user': {'origins': os.getenv("FRONTEND")},
-                     r'/register': {'origins': os.getenv("FRONTEND")},
-                     r'/api/prompt': {'origins': os.getenv("FRONTEND")},
-                     r'/login': {'origins': os.getenv("FRONTEND")}})
+CORS(app, resources={
+  r'/user': {'origins': os.getenv("FRONTEND")},
+  r'/register': {'origins': os.getenv("FRONTEND")},
+  r'/api/prompt': {'origins': os.getenv("FRONTEND")},
+  r'/login': {'origins': os.getenv("FRONTEND")},
+  r'/logout': {'origins': os.getenv("FRONTEND")},
+  r'/token/refresh': {'origins': os.getenv("FRONTEND")}
+  })
 
 
 # Setup the Flask-JWT-Extended extension
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+# Set JWT access token expiry
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=30)
+# Set JWT refresh token expiry
+app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=1)
+app.config['JWT_TOKEN_LOCATION'] = ['cookies']
+# Set to True if using HTTPS
+app.config['JWT_COOKIE_SECURE'] = False 
+# Enables CSRF (Cross-Site Request Forgery) protection for cookies
+# that store JWTs
+app.config['JWT_COOKIE_CSRF_PROTECT'] = True 
+# Cookie path to ensure cookie will be included in requests to the 
+# root URL and all branching paths
+app.config['JWT_ACCESS_COOKIE_PATH'] = '/'
+# Explicitly set separate path for refresh tokens
+app.config['JWT_REFRESH_COOKIE_PATH'] = '/token/refresh'  
 jwt = JWTManager(app)
 
 # Create bcrypt object
@@ -244,13 +265,16 @@ def login():
       stored_hash = user[2]
       # Check that passwords match
       if verify_password(password, stored_hash):
+        # Create access and refresh tokens
         access_token = create_access_token(identity=username)
-        response_data = {
-          "message": "Login verified",
-          "access_token": access_token
-        }
+        refresh_token = create_refresh_token(identity=username)
+        response = jsonify({"message": "Login verified"})
+        # Store tokens in cookies
+        set_access_cookies(response, access_token)
+        set_refresh_cookies(response, refresh_token)
+        print(f"Login data:\n\tuser: {username}\n\taccess_token: {access_token}\n\trefresh_token: {refresh_token}")
         # 200 OK: For a successful request
-        return jsonify(response_data), 200
+        return response, 200
       else:
         # 401 Unauthorized: Request lacks valid authentication credentials
         return jsonify({"error": "Invalid credentials"}), 401
@@ -259,6 +283,25 @@ def login():
       return jsonify({"error": "User not found"}), 401
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
+
+@app.route('/token/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def refresh():
+  # Check for valid refresh token
+  identity = get_jwt_identity()
+  # Create new access token
+  new_access_token = create_access_token(identity=identity)
+  response = jsonify({"message": "Access token refreshed"})
+  set_access_cookies(response, new_access_token)
+  # 200 OK: For a successful request that returns data
+  return response, 200
+
+@app.route('/logout', methods=['POST'])
+@jwt_required()
+def logout():
+  response = jsonify({"message": "Logout successful"})
+  unset_jwt_cookies(response)
+  return response, 200
 
 # PROMPT helper: data model for project idea generation
 class ProjectIdea(BaseModel):
