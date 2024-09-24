@@ -1,6 +1,6 @@
 import os
 import json
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 import mysql.connector
 from mysql.connector import IntegrityError
@@ -15,6 +15,8 @@ from pydantic import BaseModel
 from flask_bcrypt import Bcrypt
 from typing import List
 from datetime import timedelta
+from helpers import engineer_prompt
+
 
 load_dotenv()
 
@@ -39,7 +41,10 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=30)
 app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=1)
 app.config['JWT_TOKEN_LOCATION'] = ['cookies']
 # Set to True if using HTTPS
-app.config['JWT_COOKIE_SECURE'] = False 
+app.config['JWT_COOKIE_SECURE'] = False
+# Allow cross-site sharing between backend and frontend.
+# May need later for production use.
+# app.config['JWT_COOKIE_SAMESITE'] = 'None'
 # Enables CSRF (Cross-Site Request Forgery) protection for cookies
 # that store JWTs
 app.config['JWT_COOKIE_CSRF_PROTECT'] = True 
@@ -273,6 +278,13 @@ def login():
         # Store tokens in cookies
         set_access_cookies(response, access_token)
         set_refresh_cookies(response, refresh_token)
+        # response.set_cookie("access_token", access_token, httponly=True, secure=False, samesite='Lax')
+        # response.set_cookie("refresh_token", refresh_token, httponly=True, secure=False, samesite='Lax')
+        #   httponly=True:    Prevent access by client-side JavaScript (document.cookie),
+        #                     adding protection against XSS (Cross-site Scripting) attacks
+        #   secure=False:     Set to False for HTTP (will be True for HTTPS later); ensures 
+        #                     cookies are only sent over HTTPS connection
+        #   samesite='Lax’:   Prevent CSRF on cross-site requests
         print(f"Login data:\n\tuser: {username}\n\taccess_token: {access_token}\n\trefresh_token: {refresh_token}")
         # 200 OK: For a successful request
         return response, 200
@@ -302,21 +314,24 @@ def refresh():
 def logout():
   response = jsonify({"message": "Logout successful"})
   unset_jwt_cookies(response)
-  # TODO: revoke access token
+  # TODO: implement token blacklist
   # 200 OK: For a successful request that returns data
   return response, 200
 
 @app.route('/get_csrf_tokens', methods=['GET'])
 def get_csrf_tokens():
-    # Log all cookies for debugging
-    print(request.cookies)
+    # Print all cookies for debugging
+    # print(request.cookies)
     
+    # Retrieve the access token and refresh token from the cookies
     csrf_access_token = request.cookies.get('csrf_access_token')
     csrf_refresh_token = request.cookies.get('csrf_refresh_token')
     
     if not csrf_access_token or not csrf_refresh_token:
-        return jsonify({"msg": "Missing CSRF tokens"}), 400
+      # 400 Bad Request: Missing CSRF tokens
+      return jsonify({"message": "Missing CSRF tokens"}), 400
     
+    # 200 OK: For a successful request that returns data
     return jsonify({
         "csrf_access_token": csrf_access_token,
         "csrf_refresh_token": csrf_refresh_token
@@ -391,38 +406,6 @@ def hash_password(password: str):
 def verify_password(plain_password, hashed_password) -> bool:
   # Verify the hashed password
   return bcrypt.check_password_hash(hashed_password, plain_password)
-
-# PROMPT helper: parse inputs lists to engineer prompt
-# Prompt example:
-#   I am a role[0] and role[1] using technology[0] and technology[1] 
-#   and technology[2] in the industries[0] industry. Generate a project idea.
-def engineer_prompt(roles, technologies, industries) -> str:
-  if len(industries) > 1:
-    prompt = (
-      "I am a " + conjunct_me([role.lower() for role in roles]) +
-      " using " + conjunct_me(technologies) +
-      " in the " + conjunct_me([industry.lower() for industry in industries]) +
-      " industries. Generate a project idea."
-    )
-  else:
-    prompt = (
-      "I am a " + conjunct_me([role.lower() for role in roles]) +
-      " using " + conjunct_me(technologies) +
-      " in the " + conjunct_me([industry.lower() for industry in industries]) +
-      " industry. Generate a project idea."
-      )
-  return prompt
-
-# PROMPT helper: conjoin list of things using commas and/or 'and'
-def conjunct_me(list):
-  if len(list) > 2:
-    joined_string = ", ".join(list[:-1]) + ", and " + list[-1]
-    return joined_string
-  elif len(list) == 2:
-    joined_string = " and ".join(list)
-    return joined_string
-  else:
-    return list[0]
 
 create_users_table()
   
