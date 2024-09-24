@@ -9,7 +9,7 @@ from groq import Groq
 from flask_jwt_extended import (
     JWTManager, create_access_token, create_refresh_token,
     jwt_required, get_jwt_identity, set_access_cookies, set_refresh_cookies,
-    unset_jwt_cookies
+    unset_jwt_cookies, get_csrf_token
 )
 from pydantic import BaseModel
 from flask_bcrypt import Bcrypt
@@ -19,15 +19,16 @@ from datetime import timedelta
 load_dotenv()
 
 app = Flask(__name__)
-# Configure CORS
+# Configure CORS (supports_credentials=True)?
 CORS(app, resources={
   r'/user': {'origins': os.getenv("FRONTEND")},
   r'/register': {'origins': os.getenv("FRONTEND")},
   r'/api/prompt': {'origins': os.getenv("FRONTEND")},
   r'/login': {'origins': os.getenv("FRONTEND")},
   r'/logout': {'origins': os.getenv("FRONTEND")},
-  r'/token/refresh': {'origins': os.getenv("FRONTEND")}
-  })
+  r'/token/refresh': {'origins': os.getenv("FRONTEND")},
+  r'/get_csrf_tokens': {'origins': os.getenv("FRONTEND")}
+  }, supports_credentials=True)
 
 
 # Setup the Flask-JWT-Extended extension
@@ -301,7 +302,25 @@ def refresh():
 def logout():
   response = jsonify({"message": "Logout successful"})
   unset_jwt_cookies(response)
+  # TODO: revoke access token
+  # 200 OK: For a successful request that returns data
   return response, 200
+
+@app.route('/get_csrf_tokens', methods=['GET'])
+def get_csrf_tokens():
+    # Log all cookies for debugging
+    print(request.cookies)
+    
+    csrf_access_token = request.cookies.get('csrf_access_token')
+    csrf_refresh_token = request.cookies.get('csrf_refresh_token')
+    
+    if not csrf_access_token or not csrf_refresh_token:
+        return jsonify({"msg": "Missing CSRF tokens"}), 400
+    
+    return jsonify({
+        "csrf_access_token": csrf_access_token,
+        "csrf_refresh_token": csrf_refresh_token
+    }), 200
 
 # PROMPT helper: data model for project idea generation
 class ProjectIdea(BaseModel):
