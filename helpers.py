@@ -1,5 +1,14 @@
 # helpers.py
 
+from pydantic import BaseModel
+from typing import List
+
+# PROMPT helper: data model for project idea generation
+class ProjectIdea(BaseModel):
+    project_title: str
+    description: str
+    steps: List[str]
+
 # PROMPT helper: parse inputs lists to engineer prompt
 # Prompt example:
 #   I am a role[0] and role[1] using technology[0] and technology[1] 
@@ -31,3 +40,12 @@ def conjunct_me(list):
     return joined_string
   else:
     return list[0]
+
+# LOGIN and REGISTER helpers: hash and verify passwords using bcrypt
+def hash_password(password: str, bcrypt):
+    # Utilize bcrypt with an automatically generated salt
+    return bcrypt.generate_password_hash(password)
+  
+def verify_password(plain_password, hashed_password, bcrypt) -> bool:
+    # Verify the hashed password
+    return bcrypt.check_password_hash(hashed_password, plain_password)

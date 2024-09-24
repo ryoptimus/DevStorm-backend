@@ -11,12 +11,11 @@ from flask_jwt_extended import (
     jwt_required, get_jwt_identity, set_access_cookies, set_refresh_cookies,
     unset_jwt_cookies
 )
-from pydantic import BaseModel
-from flask_bcrypt import Bcrypt
-from typing import List
-from datetime import timedelta
-from helpers import engineer_prompt
 
+from flask_bcrypt import Bcrypt
+
+from datetime import timedelta
+from helpers import engineer_prompt, hash_password, verify_password, ProjectIdea
 
 load_dotenv()
 
@@ -32,7 +31,6 @@ CORS(app, resources={
   r'/get_csrf_tokens': {'origins': os.getenv("FRONTEND")}
   }, supports_credentials=True)
 
-
 # Setup the Flask-JWT-Extended extension
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 # Set JWT access token expiry
@@ -45,6 +43,7 @@ app.config['JWT_COOKIE_SECURE'] = False
 # Allow cross-site sharing between backend and frontend.
 # May need later for production use.
 # app.config['JWT_COOKIE_SAMESITE'] = 'None'
+
 # Enables CSRF (Cross-Site Request Forgery) protection for cookies
 # that store JWTs
 app.config['JWT_COOKIE_CSRF_PROTECT'] = True 
@@ -220,7 +219,7 @@ def register_user():
   data = request.get_json()
   username = data['username']
   password = data['password']
-  hashed_password = hash_password(password)
+  hashed_password = hash_password(password, bcrypt)
   connection = get_db_connection()
   if connection:
     cursor = connection.cursor()
@@ -270,7 +269,7 @@ def login():
       # Retrieve stored hash from user 
       stored_hash = user[2]
       # Check that passwords match
-      if verify_password(password, stored_hash):
+      if verify_password(password, stored_hash, bcrypt):
         # Create access and refresh tokens
         access_token = create_access_token(identity=username)
         refresh_token = create_refresh_token(identity=username)
@@ -278,6 +277,7 @@ def login():
         # Store tokens in cookies
         set_access_cookies(response, access_token)
         set_refresh_cookies(response, refresh_token)
+        
         # response.set_cookie("access_token", access_token, httponly=True, secure=False, samesite='Lax')
         # response.set_cookie("refresh_token", refresh_token, httponly=True, secure=False, samesite='Lax')
         #   httponly=True:    Prevent access by client-side JavaScript (document.cookie),
@@ -285,7 +285,8 @@ def login():
         #   secure=False:     Set to False for HTTP (will be True for HTTPS later); ensures 
         #                     cookies are only sent over HTTPS connection
         #   samesite='Lax’:   Prevent CSRF on cross-site requests
-        print(f"Login data:\n\tuser: {username}\n\taccess_token: {access_token}\n\trefresh_token: {refresh_token}")
+        # print(f"Login data:\n\tuser: {username}\n\taccess_token: {access_token}\n\trefresh_token: {refresh_token}")
+        
         # 200 OK: For a successful request
         return response, 200
       else:
@@ -336,12 +337,6 @@ def get_csrf_tokens():
         "csrf_access_token": csrf_access_token,
         "csrf_refresh_token": csrf_refresh_token
     }), 200
-
-# PROMPT helper: data model for project idea generation
-class ProjectIdea(BaseModel):
-    project_title: str
-    description: str
-    steps: List[str]
 
 # PROMPT
 @app.route('/api/prompt', methods=['POST'])
@@ -397,15 +392,6 @@ def prompt_ai():
   except Exception as e:
     # 500 Internal Server Error: Generic server-side failures
     return jsonify({"error": "Failed to call AI"}), 500
-
-# LOGIN and REGISTER helpers: hash and verify passwords using bcrypt
-def hash_password(password: str):
-    # Utilize bcrypt with an automatically generated salt
-    return bcrypt.generate_password_hash(password)
-  
-def verify_password(plain_password, hashed_password) -> bool:
-  # Verify the hashed password
-  return bcrypt.check_password_hash(hashed_password, plain_password)
 
 create_users_table()
   
