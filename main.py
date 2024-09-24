@@ -9,7 +9,7 @@ from groq import Groq
 from flask_jwt_extended import (
     JWTManager, create_access_token, create_refresh_token,
     jwt_required, get_jwt_identity, set_access_cookies, set_refresh_cookies,
-    unset_jwt_cookies, get_csrf_token
+    unset_jwt_cookies
 )
 from pydantic import BaseModel
 from flask_bcrypt import Bcrypt
@@ -226,12 +226,12 @@ def register_user():
       connection.commit()
       # Generate access token for new user
       access_token = create_access_token(identity=username)
-      response_data = {
-        "message": "User added successfully",
-        "access_token": access_token
-      }
+      refresh_token = create_refresh_token(identity=username)
+      response = jsonify({"message": "Registration successful, you are now logged in"})
+      set_access_cookies(response, access_token)
+      set_refresh_cookies(response, refresh_token)
       # 201 Created: User added/created successfully
-      return jsonify(response_data), 201
+      return response, 201
     except IntegrityError as e:
       # 400 Bad Request: Username already exists
       return jsonify({"error": "Username already exists."}), 400
