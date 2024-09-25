@@ -302,8 +302,8 @@ def login():
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
 
-@jwt.token_in_blacklist_loader
-def token_in_blacklist(decrypted_token):
+@jwt.token_in_blocklist_loader
+def token_in_blocklist(decrypted_token):
     jti = decrypted_token['jti']
     print(f"blacklist: {list(blacklist)}")
     return jti in blacklist
