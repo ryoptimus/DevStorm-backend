@@ -302,21 +302,25 @@ def login():
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
 
-# @jwt.token_in_blacklist_loader
-# def token_in_blacklist(decrypted_token):
-    # jti = decrypted_token['jti']
-    # return jti in blacklist
+@jwt.token_in_blacklist_loader
+def token_in_blacklist(decrypted_token):
+    jti = decrypted_token['jti']
+    print(f"blacklist: {list(blacklist)}")
+    return jti in blacklist
 
 @app.route('/token/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 def refresh():
   # Check for valid refresh token
   identity = get_jwt_identity()
-  # Get token's unique identifier
-  # jti = get_jwt()['jti']
+  # Get token's unique identifier (jti)
+  jti = get_jwt()['jti']
+  # Add token's jti to blacklist
+  blacklist.add(jti)
   # Create new access token
-  new_access_token = create_access_token(identity=identity)
+  new_access_token = create_access_token(identity=identity, fresh=True)
   response = jsonify({"message": "Access token refreshed"})
+  # Store token in cookie
   set_access_cookies(response, new_access_token)
   # 200 OK: For a successful request that returns data
   return response, 200
@@ -340,12 +344,29 @@ def refresh():
         # return response
 
 @app.route('/logout', methods=['POST'])
-@jwt_required()
 def logout():
-  response = jsonify({"message": "Logout successful"})
-  # Unset JWT cookies before logout
+  access_token = get_jwt()
+  refresh_token = get_jwt(refresh=True)
+
+  # Check if at least one token is present
+  # if not access_token and not refresh_token:
+    # 401 Unauthorized: No valid token provided
+    # return jsonify({"message": "No valid token provided"}), 401
+
+  # Blacklist the access token if present
+  if access_token:
+    jti_access = access_token["jti"]
+    blacklist.add(jti_access)
+
+  # Blacklist the refresh token if present
+  if refresh_token:
+    jti_refresh = refresh_token["jti"]
+    blacklist.add(jti_refresh)
+  
+  # Unset JWT cookies
   unset_jwt_cookies(response)
-  # TODO: implement token blacklist for extra security?
+  
+  response = jsonify({"message": "Logout successful"})
   # 200 OK: For a successful request that returns data
   return response, 200
 
