@@ -356,7 +356,8 @@ def logout():
       jti_access = access_token["jti"]
       blacklist.add(jti_access)
   except Exception:
-    pass  # Token might be expired, so skip blacklisting access token
+    # Token might be expired, so skip blacklisting access token
+    pass  
 
   try:
     # Try to verify the refresh token manually if present
@@ -366,7 +367,8 @@ def logout():
       jti_refresh = refresh_token["jti"]
       blacklist.add(jti_refresh)
   except Exception:
-    pass  # Token might be expired, so skip blacklisting refresh token
+    # Token might be expired, so skip blacklisting refresh token
+    pass  
   
   # Unset JWT cookies
   unset_jwt_cookies(response)
