@@ -303,10 +303,11 @@ def login():
   return jsonify({"error": "Failed to connect to database"}), 500
 
 @jwt.token_in_blocklist_loader
-def token_in_blocklist(decrypted_token):
-    jti = decrypted_token['jti']
-    print(f"blacklist: {list(blacklist)}")
-    return jti in blacklist
+def token_in_blocklist(jwt_header, jwt_data):
+  # Get token's unique identifier (jti)
+  jti = jwt_data['jti']
+  print(f"blacklist: {list(blacklist)}")
+  return jti in blacklist
 
 @app.route('/token/refresh', methods=['POST'])
 @jwt_required(refresh=True)
