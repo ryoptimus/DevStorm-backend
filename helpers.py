@@ -3,13 +3,13 @@
 from pydantic import BaseModel
 from typing import List
 
-# PROMPT helper: data model for project idea generation
+# PROMPT_AI helper: data model for project idea generation
 class ProjectIdea(BaseModel):
     project_title: str
     description: str
     steps: List[str]
 
-# PROMPT helper: parse inputs lists to engineer prompt
+# PROMPT_AI helper: parse inputs lists to engineer prompt
 # Prompt example:
 #   I am a role[0] and role[1] using technology[0] and technology[1] 
 #   and technology[2] in the industries[0] industry. Generate a project idea.
@@ -30,7 +30,7 @@ def engineer_prompt(roles, technologies, industries) -> str:
       )
   return prompt
 
-# PROMPT helper: conjoin list of things using commas and/or 'and'
+# PROMPT_AI helper: conjoin list of things using commas and/or 'and'
 def conjunct_me(list):
   if len(list) > 2:
     joined_string = ", ".join(list[:-1]) + ", and " + list[-1]

@@ -11,16 +11,15 @@ from flask_jwt_extended import (
     jwt_required, get_jwt_identity, set_access_cookies, set_refresh_cookies,
     unset_jwt_cookies
 )
-
 from flask_bcrypt import Bcrypt
-
 from datetime import timedelta
 from helpers import engineer_prompt, hash_password, verify_password, ProjectIdea
 
 load_dotenv()
 
 app = Flask(__name__)
-# Configure CORS (supports_credentials=True)?
+
+# Configure CORS
 CORS(app, resources={
   r'/user': {'origins': os.getenv("FRONTEND")},
   r'/register': {'origins': os.getenv("FRONTEND")},
@@ -93,6 +92,9 @@ def create_users_table():
                 password VARCHAR(60)
             );
         """)
+      # Change username VARCHAR(50) UNIQUE to email VARCHAR(320)
+      # UNIQUE eventually.
+      
       # Commit changes
       connection.commit()
     except mysql.connector.Error as e:
@@ -266,7 +268,7 @@ def login():
     
     # Check if user is found
     if user:
-      # Retrieve stored hash from user 
+      # Retrieve stored password hash from user 
       stored_hash = user[2]
       # Check that passwords match
       if verify_password(password, stored_hash, bcrypt):
@@ -278,13 +280,6 @@ def login():
         set_access_cookies(response, access_token)
         set_refresh_cookies(response, refresh_token)
         
-        # response.set_cookie("access_token", access_token, httponly=True, secure=False, samesite='Lax')
-        # response.set_cookie("refresh_token", refresh_token, httponly=True, secure=False, samesite='Lax')
-        #   httponly=True:    Prevent access by client-side JavaScript (document.cookie),
-        #                     adding protection against XSS (Cross-site Scripting) attacks
-        #   secure=False:     Set to False for HTTP (will be True for HTTPS later); ensures 
-        #                     cookies are only sent over HTTPS connection
-        #   samesite='Lax’:   Prevent CSRF on cross-site requests
         # print(f"Login data:\n\tuser: {username}\n\taccess_token: {access_token}\n\trefresh_token: {refresh_token}")
         
         # 200 OK: For a successful request
@@ -314,8 +309,9 @@ def refresh():
 @jwt_required()
 def logout():
   response = jsonify({"message": "Logout successful"})
+  # Unset JWT cookies before logout
   unset_jwt_cookies(response)
-  # TODO: implement token blacklist
+  # TODO: implement token blacklist for extra security?
   # 200 OK: For a successful request that returns data
   return response, 200
 
