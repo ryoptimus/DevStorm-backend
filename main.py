@@ -22,11 +22,11 @@ app = Flask(__name__)
 # Configure CORS
 CORS(app, resources={
   r'/user': {'origins': os.getenv("FRONTEND")},
-  r'/register': {'origins': os.getenv("FRONTEND")},
-  r'/api/prompt': {'origins': os.getenv("FRONTEND")},
-  r'/login': {'origins': os.getenv("FRONTEND")},
-  r'/logout': {'origins': os.getenv("FRONTEND")},
-  r'/token/refresh': {'origins': os.getenv("FRONTEND")},
+  r'/register': {'origins': [os.getenv("FRONTEND"), "http://localhost:3000"]},
+  r'/api/prompt': {'origins': [os.getenv("FRONTEND"), "http://localhost:3000"]},
+  r'/login': {'origins': [os.getenv("FRONTEND"), "http://localhost:3000"]},
+  r'/logout': {'origins': [os.getenv("FRONTEND"), "http://localhost:3000"]},
+  r'/token/refresh': {'origins': [os.getenv("FRONTEND"), "http://localhost:3000"]},
   r'/get_csrf_tokens': {'origins': os.getenv("FRONTEND")}
   }, supports_credentials=True)
 
@@ -42,7 +42,7 @@ app.config['JWT_COOKIE_SECURE'] = False
 # Allow cross-site sharing between backend and frontend.
 # May need later for production use.
 # app.config['JWT_COOKIE_SAMESITE'] = 'None'
-
+# app.config["JWT_CSRF_IN_COOKIES"] = False
 # Enables CSRF (Cross-Site Request Forgery) protection for cookies
 # that store JWTs
 app.config['JWT_COOKIE_CSRF_PROTECT'] = True 
