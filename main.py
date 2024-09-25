@@ -1,18 +1,18 @@
 import os
 import json
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 import mysql.connector
 from mysql.connector import IntegrityError
 from dotenv import load_dotenv
 from groq import Groq
 from flask_jwt_extended import (
     JWTManager, create_access_token, create_refresh_token,
-    jwt_required, get_jwt_identity, set_access_cookies, set_refresh_cookies,
+    jwt_required, get_jwt, get_jwt_identity, set_access_cookies, set_refresh_cookies,
     unset_jwt_cookies
 )
 from flask_bcrypt import Bcrypt
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from helpers import engineer_prompt, hash_password, verify_password, ProjectIdea
 
 load_dotenv()
@@ -22,16 +22,22 @@ app = Flask(__name__)
 # Configure CORS
 CORS(app, resources={
   r'/user': {'origins': os.getenv("FRONTEND")},
-  r'/register': {'origins': [os.getenv("FRONTEND"), "http://localhost:3000"]},
-  r'/api/prompt': {'origins': [os.getenv("FRONTEND"), "http://localhost:3000"]},
-  r'/login': {'origins': [os.getenv("FRONTEND"), "http://localhost:3000"]},
-  r'/logout': {'origins': [os.getenv("FRONTEND"), "http://localhost:3000"]},
-  r'/token/refresh': {'origins': [os.getenv("FRONTEND"), "http://localhost:3000"]},
+  r'/register': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
+  r'/api/prompt': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
+  r'/login': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
+  r'/logout': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
+  r'/token/refresh': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
   r'/get_csrf_tokens': {'origins': os.getenv("FRONTEND")}
   }, supports_credentials=True)
 
+print("os.getenv('FRONTEND'):")
+print(os.getenv("FRONTEND"))
+
 # Setup the Flask-JWT-Extended extension
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+# Enable blacklisting; specify which tokens to check
+app.config['JWT_BLACKLIST_ENABLED'] = True
+app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
 # Set JWT access token expiry
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=30)
 # Set JWT refresh token expiry
@@ -50,11 +56,14 @@ app.config['JWT_COOKIE_CSRF_PROTECT'] = True
 # root URL and all branching paths
 app.config['JWT_ACCESS_COOKIE_PATH'] = '/'
 # Explicitly set separate path for refresh tokens
-app.config['JWT_REFRESH_COOKIE_PATH'] = '/token/refresh'  
+app.config['JWT_REFRESH_COOKIE_PATH'] = '/'  
 jwt = JWTManager(app)
 
 # Create bcrypt object
 bcrypt = Bcrypt(app)
+
+# Create blacklist
+blacklist = set()
 
 @app.route("/")
 def hello_world():
@@ -273,7 +282,7 @@ def login():
       # Check that passwords match
       if verify_password(password, stored_hash, bcrypt):
         # Create access and refresh tokens
-        access_token = create_access_token(identity=username)
+        access_token = create_access_token(identity=username, fresh=True)
         refresh_token = create_refresh_token(identity=username)
         response = jsonify({"message": "Login verified"})
         # Store tokens in cookies
@@ -293,17 +302,42 @@ def login():
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
 
+# @jwt.token_in_blacklist_loader
+# def token_in_blacklist(decrypted_token):
+    # jti = decrypted_token['jti']
+    # return jti in blacklist
+
 @app.route('/token/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 def refresh():
   # Check for valid refresh token
   identity = get_jwt_identity()
+  # Get token's unique identifier
+  # jti = get_jwt()['jti']
   # Create new access token
   new_access_token = create_access_token(identity=identity)
   response = jsonify({"message": "Access token refreshed"})
   set_access_cookies(response, new_access_token)
   # 200 OK: For a successful request that returns data
   return response, 200
+
+# Using an `after_request` callback, we refresh any token that is within 15
+# minutes of expiring. Change the timedeltas to match the needs of your application.
+# @app.after_request
+# def refresh_expiring_jwts(response):
+    # try:
+        # exp_timestamp = get_jwt()["exp"]
+        # now = datetime.now(timezone.utc)
+        # target_timestamp = datetime.timestamp(now + timedelta(minutes=15))
+        # if target_timestamp > exp_timestamp:
+            # access_token = create_access_token(identity=get_jwt_identity())
+            # set_access_cookies(response, access_token)
+        #200 OK
+        # return response
+    # except (RuntimeError, KeyError):
+        # Case where there is not a valid JWT. Just return the original response
+        # and 401 UNAUTHORIZED
+        # return response
 
 @app.route('/logout', methods=['POST'])
 @jwt_required()
