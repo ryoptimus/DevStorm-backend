@@ -9,7 +9,7 @@ from groq import Groq
 from flask_jwt_extended import (
     JWTManager, create_access_token, create_refresh_token,
     jwt_required, get_jwt, get_jwt_identity, set_access_cookies, set_refresh_cookies,
-    unset_jwt_cookies
+    unset_jwt_cookies, verify_jwt_in_request
 )
 from flask_bcrypt import Bcrypt
 from datetime import datetime, timedelta, timezone
@@ -346,28 +346,31 @@ def refresh():
 
 @app.route('/logout', methods=['POST'])
 def logout():
-  access_token = get_jwt()
-  refresh_token = get_jwt(refresh=True)
+  response = jsonify({"message": "Logout successful"})
+  
+  try:
+    # Try to verify the access token without requiring it
+    verify_jwt_in_request(optional=True)
+    access_token = get_jwt()
+    if access_token:
+      jti_access = access_token["jti"]
+      blacklist.add(jti_access)
+  except Exception:
+    pass  # Token might be expired, so skip blacklisting access token
 
-  # Check if at least one token is present
-  # if not access_token and not refresh_token:
-    # 401 Unauthorized: No valid token provided
-    # return jsonify({"message": "No valid token provided"}), 401
-
-  # Blacklist the access token if present
-  if access_token:
-    jti_access = access_token["jti"]
-    blacklist.add(jti_access)
-
-  # Blacklist the refresh token if present
-  if refresh_token:
-    jti_refresh = refresh_token["jti"]
-    blacklist.add(jti_refresh)
+  try:
+    # Try to verify the refresh token manually if present
+    verify_jwt_in_request(optional=True, refresh=True)
+    refresh_token = get_jwt(refresh=True)
+    if refresh_token:
+      jti_refresh = refresh_token["jti"]
+      blacklist.add(jti_refresh)
+  except Exception:
+    pass  # Token might be expired, so skip blacklisting refresh token
   
   # Unset JWT cookies
   unset_jwt_cookies(response)
   
-  response = jsonify({"message": "Logout successful"})
   # 200 OK: For a successful request that returns data
   return response, 200
 
