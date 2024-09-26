@@ -21,14 +21,13 @@ app = Flask(__name__)
 
 # Configure CORS
 CORS(app, resources={
-  r'/user': {'origins': os.getenv("FRONTEND")},
+  r'/user/*': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
   r'/register': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
   r'/api/prompt': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
   r'/login': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
   r'/logout': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
   r'/token/refresh': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-  r'/get_csrf_tokens': {'origins': os.getenv("FRONTEND")},
-  r'/user/*/update': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
+  r'/get_csrf_tokens': {'origins': os.getenv("FRONTEND")}
   }, supports_credentials=True)
 
 # Setup the Flask-JWT-Extended extension
@@ -372,7 +371,7 @@ def update_record(username):
   return jsonify({"error": "Failed to connect to database"}), 500
 
 # DELETE
-@app.route('/user/<username>', methods=['DELETE'])
+@app.route('/user/<username>/delete', methods=['DELETE'])
 def delete_record(username):
   connection = get_db_connection()
   if connection:
