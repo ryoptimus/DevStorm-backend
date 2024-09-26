@@ -14,19 +14,10 @@ class ProjectIdea(BaseModel):
 #   I am a role[0] and role[1] using technology[0] and technology[1] 
 #   and technology[2] in the industries[0] industry. Generate a project idea.
 def engineer_prompt(roles, technologies, industries) -> str:
-  if len(industries) > 1:
-    prompt = (
+  prompt = (
       "I am a " + conjunct_me([role.lower() for role in roles]) +
       " using " + conjunct_me(technologies) +
-      " in the " + conjunct_me([industry.lower() for industry in industries]) +
-      " industries. Generate a project idea."
-    )
-  else:
-    prompt = (
-      "I am a " + conjunct_me([role.lower() for role in roles]) +
-      " using " + conjunct_me(technologies) +
-      " in the " + conjunct_me([industry.lower() for industry in industries]) +
-      " industry. Generate a project idea."
+      f" in the {industries[0].lower()} industry. Generate a project idea."
       )
   return prompt
 

@@ -30,9 +30,6 @@ CORS(app, resources={
   r'/get_csrf_tokens': {'origins': os.getenv("FRONTEND")}
   }, supports_credentials=True)
 
-print("os.getenv('FRONTEND'):")
-print(os.getenv("FRONTEND"))
-
 # Setup the Flask-JWT-Extended extension
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 # Enable blocklisting; specify which tokens to check
