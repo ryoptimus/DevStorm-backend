@@ -27,7 +27,8 @@ CORS(app, resources={
   r'/login': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
   r'/logout': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
   r'/token/refresh': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-  r'/get_csrf_tokens': {'origins': os.getenv("FRONTEND")}
+  r'/get_csrf_tokens': {'origins': os.getenv("FRONTEND")},
+  r'/user/*/update': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
   }, supports_credentials=True)
 
 # Setup the Flask-JWT-Extended extension
@@ -173,21 +174,20 @@ def get_all_users():
   return jsonify({"error": "Failed to connect to database"}), 500
 
 # UPDATE
-# Requires user ID
-@app.route('/user/<int:id>', methods=['PUT'])
-def update_record(id):
+@app.route('/user/<username>/update', methods=['PUT'])
+def update_record(username):
   data = request.get_json()
-  username = data['username']
   password = data['password']
+  hashed_password = hash_password(password, bcrypt)
   connection = get_db_connection()
   if connection:
     try:
       cursor = connection.cursor()
-      query = "UPDATE users SET username = %s, password = %s WHERE id = %s"
-      cursor.execute(query, (username, password, id))
+      query = "UPDATE users SET password = %s WHERE username = %s"
+      cursor.execute(query, (hashed_password, username,))
       connection.commit()
       # 200 OK: For a successful request
-      return jsonify({"message": "User updated successfully"}), 200
+      return jsonify({"message": "Password updated successfully"}), 200
     except mysql.connector.Error as e:
       # 500 Internal Server Error
       return jsonify({"error": f"Database error: {e}"}), 500
