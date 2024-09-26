@@ -173,54 +173,6 @@ def get_all_users():
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
 
-# UPDATE
-@app.route('/user/<username>/update', methods=['PUT'])
-def update_record(username):
-  data = request.get_json()
-  password = data['password']
-  hashed_password = hash_password(password, bcrypt)
-  connection = get_db_connection()
-  if connection:
-    try:
-      cursor = connection.cursor()
-      query = "UPDATE users SET password = %s WHERE username = %s"
-      cursor.execute(query, (hashed_password, username,))
-      connection.commit()
-      # 200 OK: For a successful request
-      return jsonify({"message": "Password updated successfully"}), 200
-    except mysql.connector.Error as e:
-      # 500 Internal Server Error
-      return jsonify({"error": f"Database error: {e}"}), 500
-    finally:
-      # Close resources
-      cursor.close()
-      connection.close()
-  # 500 Internal Server Error: Generic server-side failures
-  return jsonify({"error": "Failed to connect to database"}), 500
-
-# DELETE
-@app.route('/user/<username>', methods=['DELETE'])
-def delete_record(username):
-  connection = get_db_connection()
-  if connection:
-    try:
-      cursor = connection.cursor()
-      query = "DELETE FROM users WHERE username = %s"
-      cursor.execute(query, (username,))
-      # Commit changes
-      connection.commit()
-      # 200 OK: For a successful request
-      return jsonify({"message": "User deleted successfully."}), 200
-    except mysql.connector.Error as e:
-      # 500 Internal Server Error
-      return jsonify({"error": f"Database error: {e}"}), 500
-    finally:
-      # Close resources
-      cursor.close()
-      connection.close()
-  # 500 Internal Server Error: Generic server-side failures
-  return jsonify({"error": "Failed to connect to database"}), 500
-
 # REGISTER
 @app.route('/register', methods=['POST'])
 def register_user():
@@ -281,7 +233,7 @@ def login():
         # Create access and refresh tokens
         access_token = create_access_token(identity=username, fresh=True)
         refresh_token = create_refresh_token(identity=username)
-        response = jsonify({"message": "Login verified"})
+        response = jsonify({"message": "Login verified", "access_token": access_token})
         # Store tokens in cookies
         set_access_cookies(response, access_token)
         set_refresh_cookies(response, refresh_token)
@@ -294,8 +246,8 @@ def login():
         # 401 Unauthorized: Request lacks valid authentication credentials
         return jsonify({"error": "Invalid credentials"}), 401
     else:
-      # 401 Unauthorized: User not found
-      return jsonify({"error": "User not found"}), 401
+      # 401 Not Found: User not found
+      return jsonify({"error": "User not found"}), 404
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
 
@@ -303,7 +255,7 @@ def login():
 def token_in_blocklist(jwt_header, jwt_data):
   # Get token's unique identifier (jti)
   jti = jwt_data['jti']
-  print(f"blocklist: {list(blocklist)}")
+  # print(f"blocklist: {list(blocklist)}")
   return jti in blocklist
 
 @app.route('/token/refresh', methods=['POST'])
@@ -372,6 +324,75 @@ def logout():
   
   # 200 OK: For a successful request that returns data
   return response, 200
+
+# UPDATE
+# Updates password of a given user
+@app.route('/user/<username>/update', methods=['PUT'])
+@jwt_required()
+def update_record(username):
+  data = request.get_json()
+  current_password = data['current_password']
+  new_password = data['new_password']
+  connection = get_db_connection()
+  if connection:
+    try:
+      cursor = connection.cursor()
+      # First, retrieve user by username (unique)
+      query_a = "SELECT * FROM users WHERE username = %s"
+      cursor.execute(query_a, (username,))
+      user = cursor.fetchone()
+      # Check if user is found
+      if user:
+        # Retrieve stored password hash for user
+        stored_hash = user[2]
+        # Check that current password matches stored password
+        if verify_password(current_password, stored_hash, bcrypt):
+          # Hash new password
+          hashed_new_password = hash_password(new_password, bcrypt)
+          # Set new (hashed) password
+          query_b = "UPDATE users SET password = %s WHERE username = %s"
+          cursor.execute(query_b, (hashed_new_password, username,))
+          connection.commit()
+          # 200 OK: For a successful request
+          return jsonify({"message": "Password updated successfully"}), 200
+        else:
+          # 401 Unauthorized: Current password is incorrect
+          return jsonify({"error": "Invalid current password"}), 401
+      else:
+        # 404 Not Found: User not found
+        return jsonify({"error": "User not found"}), 404
+    except mysql.connector.Error as e:
+      # 500 Internal Server Error
+      return jsonify({"error": f"Database error: {e}"}), 500
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
+  # 500 Internal Server Error: Generic server-side failures
+  return jsonify({"error": "Failed to connect to database"}), 500
+
+# DELETE
+@app.route('/user/<username>', methods=['DELETE'])
+def delete_record(username):
+  connection = get_db_connection()
+  if connection:
+    try:
+      cursor = connection.cursor()
+      query = "DELETE FROM users WHERE username = %s"
+      cursor.execute(query, (username,))
+      # Commit changes
+      connection.commit()
+      # 200 OK: For a successful request
+      return jsonify({"message": "User deleted successfully."}), 200
+    except mysql.connector.Error as e:
+      # 500 Internal Server Error
+      return jsonify({"error": f"Database error: {e}"}), 500
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
+  # 500 Internal Server Error: Generic server-side failures
+  return jsonify({"error": "Failed to connect to database"}), 500
 
 @app.route('/get_csrf_tokens', methods=['GET'])
 def get_csrf_tokens():
