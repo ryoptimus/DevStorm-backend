@@ -7,7 +7,9 @@ from typing import List
 class ProjectIdea(BaseModel):
     project_title: str
     description: str
+    languages: List[str]
     steps: List[str]
+    scale_up_ideas: List[str]
 
 # PROMPT_AI helper: parse inputs lists to engineer prompt
 # Prompt example:
@@ -15,10 +17,12 @@ class ProjectIdea(BaseModel):
 #   and technology[2] in the industries[0] industry. Generate a project idea.
 def engineer_prompt(roles, technologies, industries) -> str:
   prompt = (
-      "I am a " + conjunct_me([role.lower() for role in roles]) +
-      " using " + conjunct_me(technologies) +
-      f" in the {industries[0].lower()} industry. Generate a project idea."
-      )
+    "I am a " + conjunct_me([role.lower() for role in roles]) +
+    " using " + conjunct_me(technologies) +
+    f" in the {industries[0].lower()} industry. Generate a project idea. " 
+    "Include which languages/technologies are used, clear steps for achieving "
+    "project completion, and ideas for scaling it up."
+  )
   return prompt
 
 # PROMPT_AI helper: conjoin list of things using commas and/or 'and'

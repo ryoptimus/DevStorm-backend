@@ -405,6 +405,7 @@ def prompt_ai():
   technologies = data['technology']
   industries = data['industries']
   prompt = engineer_prompt(roles, technologies, industries)
+  print(f"Prompt: {prompt}")
   if not data:
     # 400 Bad Request: No inputs provided
     return jsonify({"error": "No inputs provided"}), 400
@@ -441,6 +442,7 @@ def prompt_ai():
       response_format={"type": "json_object"},
     )
     generated_text = response.choices[0].message.content
+    print(f"Generated text: {generated_text}")
     # 200 OK: For a successful request that returns data
     return jsonify({"response": generated_text}), 200
   except Exception as e:
