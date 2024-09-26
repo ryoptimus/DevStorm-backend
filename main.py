@@ -35,7 +35,7 @@ print(os.getenv("FRONTEND"))
 
 # Setup the Flask-JWT-Extended extension
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
-# Enable blacklisting; specify which tokens to check
+# Enable blocklisting; specify which tokens to check
 app.config['JWT_BLACKLIST_ENABLED'] = True
 app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
 # Set JWT access token expiry
@@ -62,8 +62,8 @@ jwt = JWTManager(app)
 # Create bcrypt object
 bcrypt = Bcrypt(app)
 
-# Create blacklist
-blacklist = set()
+# Create blocklist
+blocklist = set()
 
 @app.route("/")
 def hello_world():
@@ -306,8 +306,8 @@ def login():
 def token_in_blocklist(jwt_header, jwt_data):
   # Get token's unique identifier (jti)
   jti = jwt_data['jti']
-  print(f"blacklist: {list(blacklist)}")
-  return jti in blacklist
+  print(f"blocklist: {list(blocklist)}")
+  return jti in blocklist
 
 @app.route('/token/refresh', methods=['POST'])
 @jwt_required(refresh=True)
@@ -316,8 +316,8 @@ def refresh():
   identity = get_jwt_identity()
   # Get token's unique identifier (jti)
   jti = get_jwt()['jti']
-  # Add token's jti to blacklist
-  blacklist.add(jti)
+  # Add token's jti to blocklist
+  blocklist.add(jti)
   # Create new access token
   new_access_token = create_access_token(identity=identity, fresh=True)
   response = jsonify({"message": "Access token refreshed"})
@@ -354,9 +354,9 @@ def logout():
     access_token = get_jwt()
     if access_token:
       jti_access = access_token["jti"]
-      blacklist.add(jti_access)
+      blocklist.add(jti_access)
   except Exception:
-    # Token might be expired, so skip blacklisting access token
+    # Token might be expired, so skip blocklisting access token
     pass  
 
   try:
@@ -365,9 +365,9 @@ def logout():
     refresh_token = get_jwt(refresh=True)
     if refresh_token:
       jti_refresh = refresh_token["jti"]
-      blacklist.add(jti_refresh)
+      blocklist.add(jti_refresh)
   except Exception:
-    # Token might be expired, so skip blacklisting refresh token
+    # Token might be expired, so skip blocklisting refresh token
     pass  
   
   # Unset JWT cookies
