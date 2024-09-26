@@ -1,5 +1,5 @@
 # Brainstorming app for computer science and technology students
-Frontend can be found here: https://github.com/novoaj/brainstormai-frontend
+Frontend can be found here: https://github.com/novoaj/DevStorm-web
 
 ## Description
 Our API works to perform CRUD operations with our MySQL database and interface with 
