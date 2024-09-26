@@ -395,9 +395,6 @@ def delete_record(username):
 
 @app.route('/get_csrf_tokens', methods=['GET'])
 def get_csrf_tokens():
-    # Print all cookies for debugging
-    # print(request.cookies)
-    
     # Retrieve the access token and refresh token from the cookies
     csrf_access_token = request.cookies.get('csrf_access_token')
     csrf_refresh_token = request.cookies.get('csrf_refresh_token')
