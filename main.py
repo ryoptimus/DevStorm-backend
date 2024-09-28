@@ -21,12 +21,15 @@ app = Flask(__name__)
 
 # Configure CORS
 CORS(app, resources={
+  r'/user': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
   r'/user/*': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
   r'/register': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
   r'/api/prompt': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
   r'/login': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
   r'/logout': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
   r'/token/refresh': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
+  r'/project': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
+  r'/project/*': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
   r'/get_csrf_tokens': {'origins': os.getenv("FRONTEND")}
   }, supports_credentials=True)
 
@@ -104,13 +107,46 @@ def create_users_table():
       # Commit changes
       connection.commit()
     except mysql.connector.Error as e:
-      print(f"Error creating table: {e}")
+      print(f"Error creating 'users' table: {e}")
     finally:
       # Close resources
       cursor.close()
       connection.close()
   else:
-    print("Failed to connect to database. Could not create table.")
+    print("Failed to connect to database. Could not create 'users' table.")
+    
+def create_projects_table():
+  connection = get_db_connection()
+  if connection:
+    cursor = connection.cursor()
+    try:
+      # Drop previous table of same name if one exists
+      # cursor.execute("DROP TABLE IF EXISTS projects;")
+      # print("Finished dropping table (if existed).")
+      # Create table
+      #   summary:  255 char length. Standard for short-text fields
+      #   steps:    TEXT <- should it just be VARCHAR(1000) or something?
+      cursor.execute("""
+          CREATE TABLE IF NOT EXISTS projects (
+                id INT AUTO_INCREMENT PRIMARY KEY, 
+                username VARCHAR(50) UNIQUE, 
+                title VARCHAR(60),
+                summary VARCHAR(255),
+                steps TEXT
+            );
+        """)
+      print("Created table 'projects.'")
+      
+      # Commit changes
+      connection.commit()
+    except mysql.connector.Error as e:
+      print(f"Error creating 'projects' table: {e}")
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
+  else:
+    print("Failed to connect to database. Could not create 'projects' table.")
 
 @app.route('/user/<username>', methods=['GET'])
 def get_user(username):
@@ -466,7 +502,75 @@ def prompt_ai():
     # 500 Internal Server Error: Generic server-side failures
     return jsonify({"error": "Failed to call AI"}), 500
 
+# GET ALL PROJECTS
+@app.route('/project', methods=['GET'])
+def get_all_projects():
+  connection = get_db_connection()
+  if connection:
+    cursor = connection.cursor()
+    query = "SELECT * FROM projects"
+    try:
+      cursor.execute(query)
+      projects = cursor.fetchall()
+      if projects:
+        projects_list = [
+          {
+            "id": project[0], 
+            "username": project[1], 
+            "title": project[2],
+            "summary": project[3],
+            "steps": project[4]
+          } 
+          for project in projects
+        ]
+        # 200 OK: For a successful request that returns data
+        return jsonify(projects_list), 200
+      else:
+        # 404 Not Found: Projects not found
+        return jsonify({"error": "No projects found"}), 404
+    except mysql.connector.Error as e:
+      # 500 Internal Server Error: Generic server-side failures
+      return jsonify({"error": str(e)}), 500
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
+  # 500 Internal Server Error: Generic server-side failures
+  return jsonify({"error": "Failed to connect to database"}), 500
+
+# CREATE PROJECT
+# TODO: add jwt_required, test
+@app.route('/project/create', methods=['POST'])
+def create_project():
+  data = request.get_json()
+  username = data['username']
+  title = data['title']
+  summary = data['summary']
+  steps = data['steps']
+  connection = get_db_connection()
+  if connection:
+    cursor = connection.cursor()
+    query = "INSERT INTO projects (username, title, summary, steps) VALUES (%s, %s, %s, %s)"
+    try:
+      cursor.execute(query, (username, title, summary, steps))
+      # Commit changes
+      connection.commit()
+      response = jsonify({"message": "Project creation successful"})
+      
+      # 201 Created: User added/created successfully
+      return response, 201
+    except IntegrityError as e:
+      # 400 Bad Request: Project already exists
+      return jsonify({"error": "Project already exists."}), 400
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
+  # 500 Internal Server Error: Generic server-side failures
+  return jsonify({"error": "Failed to connect to database"}), 500
+  
 create_users_table()
+create_projects_table()
   
 if __name__ == "__main__":
   app.run(debug=True)
