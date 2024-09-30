@@ -285,7 +285,7 @@ def login():
     # Check if user is found
     if user:
       # Retrieve stored password hash from user 
-      stored_hash = user[2]
+      stored_hash = user[3]
       # Check that passwords match
       if verify_password(password, stored_hash, bcrypt):
         # Create access and refresh tokens
@@ -295,9 +295,7 @@ def login():
         # Store tokens in cookies
         set_access_cookies(response, access_token)
         set_refresh_cookies(response, refresh_token)
-        
-        # print(f"Login data:\n\tuser: {username}\n\taccess_token: {access_token}\n\trefresh_token: {refresh_token}")
-        
+        print(f"Login data:\n\tuser: {username}\n\taccess_token: {access_token}\n\trefresh_token: {refresh_token}")
         # 200 OK: For a successful request
         return response, 200
       else:
@@ -552,7 +550,6 @@ def get_user_projects(username):
     else:
       # 404 Not Found: Projects not found
       return jsonify({"error": f"No projects found for user 'username'"}), 404
-      
 
 # GET ALL PROJECTS
 @app.route('/project', methods=['GET'])
@@ -595,6 +592,7 @@ def get_all_projects():
 # CREATE PROJECT
 # TODO: add jwt_required, test
 @app.route('/project/create', methods=['POST'])
+@jwt_required()
 def create_project():
   data = request.get_json()
   username = data['username']
