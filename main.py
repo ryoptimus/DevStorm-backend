@@ -1,66 +1,20 @@
 import os
 import json
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask import request, jsonify
 import mysql.connector
 from mysql.connector import IntegrityError
-from dotenv import load_dotenv
 from groq import Groq
 from flask_jwt_extended import (
-    JWTManager, create_access_token, create_refresh_token,
+    create_access_token, create_refresh_token,
     jwt_required, get_jwt, get_jwt_identity, set_access_cookies, set_refresh_cookies,
     unset_jwt_cookies, verify_jwt_in_request
 )
-from flask_bcrypt import Bcrypt
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
+from app import create_app
+from db import get_db_connection, create_users_table, create_projects_table
 from helpers import engineer_prompt, hash_password, verify_password, ProjectIdea
 
-load_dotenv()
-
-app = Flask(__name__)
-
-# Configure CORS
-CORS(app, resources={
-  r'/user': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-  r'/user/*': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-  r'/register': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-  r'/api/prompt': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-  r'/login': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-  r'/logout': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-  r'/token/refresh': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-  r'/project': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-  r'/project/*': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-  r'/get_csrf_tokens': {'origins': os.getenv("FRONTEND")}
-  }, supports_credentials=True)
-
-# Setup the Flask-JWT-Extended extension
-app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
-# Enable blocklisting; specify which tokens to check
-app.config['JWT_BLACKLIST_ENABLED'] = True
-app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
-# Set JWT access token expiry
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=30)
-# Set JWT refresh token expiry
-app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=1)
-app.config['JWT_TOKEN_LOCATION'] = ['cookies']
-# Set to True if using HTTPS
-app.config['JWT_COOKIE_SECURE'] = False
-# Allow cross-site sharing between backend and frontend.
-# May need later for production use.
-# app.config['JWT_COOKIE_SAMESITE'] = 'None'
-# app.config["JWT_CSRF_IN_COOKIES"] = False
-# Enables CSRF (Cross-Site Request Forgery) protection for cookies
-# that store JWTs
-app.config['JWT_COOKIE_CSRF_PROTECT'] = True 
-# Cookie path to ensure cookie will be included in requests to the 
-# root URL and all branching paths
-app.config['JWT_ACCESS_COOKIE_PATH'] = '/'
-# Explicitly set separate path for refresh tokens
-app.config['JWT_REFRESH_COOKIE_PATH'] = '/'  
-jwt = JWTManager(app)
-
-# Create bcrypt object
-bcrypt = Bcrypt(app)
+app, jwt, bcrypt = create_app()
 
 # Create blocklist
 blocklist = set()
@@ -68,95 +22,6 @@ blocklist = set()
 @app.route("/")
 def hello_world():
     return "Hello world!"
-
-# Connect to database
-def get_db_connection():
-  try:
-    connection = mysql.connector.connect(
-      user=os.getenv("ADMIN_USER"), 
-      password=os.getenv("ADMIN_PASSWORD"), 
-      host=os.getenv("ENDPOINT"), 
-      port=3306, 
-      database=os.getenv("DB_NAME")
-    )
-    return connection
-  except mysql.connector.Error as e:
-    print(f"error: {e}")
-    return None
-
-# Generate table to store user information
-def create_users_table():
-  connection = get_db_connection()
-  if connection:
-    cursor = connection.cursor()
-    try:
-      # Drop previous table of same name if one exists
-      # cursor.execute("DROP TABLE IF EXISTS users;")
-      # print("Finished dropping 'users' table (if existed).")
-      # Create table
-      #   username:   50 char length. Standard for short-text fields
-      #   email:      Max length 320
-      #   membership: Two possible values - STANDARD or PREMIUM.
-      #               MAX length value - STANDARD. 8 chars
-      cursor.execute("""
-          CREATE TABLE IF NOT EXISTS users (
-                id INT AUTO_INCREMENT PRIMARY KEY, 
-                email VARCHAR(320) UNIQUE,
-                username VARCHAR(50) UNIQUE, 
-                password VARCHAR(60),
-                membership VARCHAR(8),
-                projects INT DEFAULT 0,
-                projects_completed INT DEFAULT 0,
-                date_joined DATETIME
-            );
-        """)
-      
-      # Commit changes
-      connection.commit()
-    except mysql.connector.Error as e:
-      print(f"Error creating 'users' table: {e}")
-    finally:
-      # Close resources
-      cursor.close()
-      connection.close()
-  else:
-    print("Failed to connect to database. Could not create 'users' table.")
-    
-def create_projects_table():
-  connection = get_db_connection()
-  if connection:
-    cursor = connection.cursor()
-    try:
-      # Drop previous table of same name if one exists
-      cursor.execute("DROP TABLE IF EXISTS projects;")
-      print("Finished dropping 'projects' table (if existed).")
-      # Create table
-      #   summary:  255 char length. Standard for short-text fields
-      #   steps:    JSON
-      #   status:   Two possible values - COMPLETE or IN_PROGRESS.
-      #             MAX length value - IN_PROGRESS. 11 chars
-      cursor.execute("""
-          CREATE TABLE IF NOT EXISTS projects (
-                id INT AUTO_INCREMENT PRIMARY KEY, 
-                username VARCHAR(50) UNIQUE, 
-                title VARCHAR(60),
-                summary VARCHAR(255),
-                steps JSON,
-                status VARCHAR(11)
-            );
-        """)
-      print("Created table 'projects.'")
-      
-      # Commit changes
-      connection.commit()
-    except mysql.connector.Error as e:
-      print(f"Error creating 'projects' table: {e}")
-    finally:
-      # Close resources
-      cursor.close()
-      connection.close()
-  else:
-    print("Failed to connect to database. Could not create 'projects' table.")
 
 @app.route('/user/<username>', methods=['GET'])
 def get_user(username):
@@ -352,7 +217,6 @@ def refresh():
 @app.route('/logout', methods=['POST'])
 def logout():
   response = jsonify({"message": "Logout successful"})
-  
   try:
     # Try to verify the access token without requiring it
     verify_jwt_in_request(optional=True)
@@ -590,7 +454,6 @@ def get_all_projects():
   return jsonify({"error": "Failed to connect to database"}), 500
 
 # CREATE PROJECT
-# TODO: add jwt_required, test
 @app.route('/project/create', methods=['POST'])
 @jwt_required()
 def create_project():
