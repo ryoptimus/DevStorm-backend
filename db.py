@@ -28,7 +28,7 @@ def create_users_table():
       # cursor.execute("DROP TABLE IF EXISTS users;")
       # print("Finished dropping 'users' table (if existed).")
       # Create table
-      #   username:   50 char length. Standard for short-text fields
+      #   username:   50 char length
       #   email:      Max length 320
       #   membership: Two possible values - STANDARD or PREMIUM.
       #               MAX length value - STANDARD. 8 chars
@@ -62,24 +62,25 @@ def create_projects_table():
     cursor = connection.cursor()
     try:
       # Drop previous table of same name if one exists
-      # cursor.execute("DROP TABLE IF EXISTS projects;")
-      # print("Finished dropping 'projects' table (if existed).")
+      cursor.execute("DROP TABLE IF EXISTS projects;")
+      print("Finished dropping 'projects' table (if existed).")
       # Create table
       #   summary:  255 char length. Standard for short-text fields
       #   steps:    JSON
-      #   status:   Two possible values - COMPLETE or IN_PROGRESS.
-      #             MAX length value - IN_PROGRESS. 11 chars
+      #   status:   Two possible values - 0 or 1.
+      #             0: Incomplete
+      #             1: Completed
       cursor.execute("""
           CREATE TABLE IF NOT EXISTS projects (
                 id INT AUTO_INCREMENT PRIMARY KEY, 
                 username VARCHAR(50) UNIQUE, 
-                title VARCHAR(60),
+                title VARCHAR(100),
                 summary VARCHAR(255),
                 steps JSON,
-                status VARCHAR(11)
+                status INT
             );
         """)
-      print("Created table 'projects.'")
+      # print("Created table 'projects.'")
       
       # Commit changes
       connection.commit()
@@ -91,3 +92,41 @@ def create_projects_table():
       connection.close()
   else:
     print("Failed to connect to database. Could not create 'projects' table.")
+    
+def create_tasks_table():
+  connection = get_db_connection()
+  if connection:
+    cursor = connection.cursor()
+    try:
+      # Drop previous table of same name if one exists
+      # cursor.execute("DROP TABLE IF EXISTS tasks;")
+      # print("Finished dropping 'tasks' table (if existed).")
+      # Create table
+      #   pid:          int
+      #   description:  TEXT (should this be shorter?)
+      #   status:   Three possible values - 1, 2, or 3.
+      #             1: To-do
+      #             2: In progress
+      #             3: Completed
+      cursor.execute("""
+          CREATE TABLE IF NOT EXISTS tasks (
+                id INT AUTO_INCREMENT PRIMARY KEY, 
+                pid INT,
+                description TEXT, 
+                priority INT,
+                status INT,
+                FOREIGN KEY (pid) REFERENCES projects(id)
+            );
+        """)
+      print("Created table 'tasks.'")
+      
+      # Commit changes
+      connection.commit()
+    except mysql.connector.Error as e:
+      print(f"Error creating 'tasks' table: {e}")
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
+  else:
+    print("Failed to connect to database. Could not create 'tasks' table.")

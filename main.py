@@ -11,8 +11,8 @@ from flask_jwt_extended import (
 )
 from datetime import datetime
 from app import create_app
-from db import get_db_connection, create_users_table, create_projects_table
-from helpers import engineer_prompt, hash_password, verify_password, ProjectIdea
+from db import get_db_connection, create_users_table, create_projects_table, create_tasks_table
+from helpers import engineer_brainstorm_prompt, engineer_taskgen_prompt, hash_password, verify_password, ProjectIdea
 
 app, jwt, bcrypt = create_app()
 
@@ -23,34 +23,40 @@ blocklist = set()
 def hello_world():
     return "Hello world!"
 
+#TODO: Make 'projects' a list format of PIDs
 @app.route('/user/<username>', methods=['GET'])
 def get_user(username):
   connection = get_db_connection()
   if connection:
     cursor = connection.cursor()
     query = "SELECT * FROM users WHERE username = %s"
-    cursor.execute(query, (username,))
-    # Check that cursor did not return none
-    user = cursor.fetchone()
-    # Close resources
-    cursor.close()
-    connection.close()
-    if user:
-      user_data = {
-        "id": user[0], 
-        "email": user[1], 
-        "username": user[2],
-        "password": user[3],
-        "membership": user[4],
-        "projects": user[5],
-        "projects_completed": user[6],
-        "date_joined": user[7]
-      }
-      # 200 OK: For a successful request that returns data
-      return jsonify(user_data), 200
-    else:
-      # 404 Not Found: User not found
-      return jsonify({"error": "User not found"}), 404
+    try:
+      cursor.execute(query, (username,))
+      # Check that cursor did not return none
+      user = cursor.fetchone()
+      if user:
+        user_data = {
+          "id": user[0], 
+          "email": user[1], 
+          "username": user[2],
+          "password": user[3],
+          "membership": user[4],
+          "projects": user[5],
+          "projects_completed": user[6],
+          "date_joined": user[7]
+        }
+        # 200 OK: For a successful request that returns data
+        return jsonify(user_data), 200
+      else:
+        # 404 Not Found: User not found
+        return jsonify({"error": "User not found"}), 404
+    except mysql.connector.Error as e:
+      # 500 Internal Server Error: Generic server-side failures
+      return jsonify({"error": str(e)}), 500
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
 
@@ -342,7 +348,7 @@ def prompt_ai():
   roles = data['role']
   technologies = data['technology']
   industries = data['industries']
-  prompt = engineer_prompt(roles, technologies, industries)
+  prompt = engineer_brainstorm_prompt(roles, technologies, industries)
   print(f"Prompt: {prompt}")
   if not data:
     # 400 Bad Request: No inputs provided
@@ -386,6 +392,41 @@ def prompt_ai():
   except Exception as e:
     # 500 Internal Server Error: Generic server-side failures
     return jsonify({"error": "Failed to call AI"}), 500
+  
+@app.route('/project/<int:id>', methods=['GET'])
+def get_project(id):
+  connection = get_db_connection()
+  if connection:
+    cursor = connection.cursor()
+    # Structure query, retrieve project
+    query = "SELECT * FROM projects WHERE id = %s"
+    try:
+      cursor.execute(query, (id,))
+      project = cursor.fetchone()
+      if project:
+        project_data = {
+          "id": project[0], 
+          "username": project[1], 
+          "title": project[2],
+          "summary": project[3],
+          # Convert JSON string to list format
+          "steps": json.loads(project[4]),
+          "status": project[5]
+        }
+        # 200 OK: For a successful request that returns data
+        return jsonify(project_data), 200
+      else:
+        # 404 Not Found: Projects not found
+        return jsonify({"error": f"No project found with ID {id}"}), 404
+    except mysql.connector.Error as e:
+      # 500 Internal Server Error: Generic server-side failures
+      return jsonify({"error": str(e)}), 500
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
+  # 500 Internal Server Error: Generic server-side failures
+  return jsonify({"error": "Failed to connect to database"}), 500 
 
 # GET ALL PROJECTS for a given user
 @app.route('/project/<username>', methods=['GET'])
@@ -414,7 +455,7 @@ def get_user_projects(username):
       return jsonify(projects_list), 200
     else:
       # 404 Not Found: Projects not found
-      return jsonify({"error": f"No projects found for user 'username'"}), 404
+      return jsonify({"error": f"No projects found for user '{username}'"}), 404
 
 # GET ALL PROJECTS
 @app.route('/project', methods=['GET'])
@@ -462,15 +503,15 @@ def create_project():
   username = data['username']
   title = data['title']
   summary = data['summary']
-  # Convert list to JSON string
-  steps = json.dumps(data['steps']) 
+  steps = data['steps'] 
   status = data['status']
   connection = get_db_connection()
   if connection:
     cursor = connection.cursor()
     query = "INSERT INTO projects (username, title, summary, steps, status) VALUES (%s, %s, %s, %s, %s)"
     try:
-      cursor.execute(query, (username, title, summary, steps, status))
+      # Convert 'steps' list to JSON string for storage
+      cursor.execute(query, (username, title, summary, json.dumps(steps), status))
       # Commit changes
       connection.commit()
       response = jsonify({"message": "Project creation successful"})
@@ -511,6 +552,7 @@ def delete_project(id):
   
 create_users_table()
 create_projects_table()
+create_tasks_table()
   
 if __name__ == "__main__":
   app.run(debug=True)
