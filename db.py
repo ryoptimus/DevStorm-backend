@@ -62,8 +62,8 @@ def create_projects_table():
     cursor = connection.cursor()
     try:
       # Drop previous table of same name if one exists
-      cursor.execute("DROP TABLE IF EXISTS projects;")
-      print("Finished dropping 'projects' table (if existed).")
+      # cursor.execute("DROP TABLE IF EXISTS projects;")
+      # print("Finished dropping 'projects' table (if existed).")
       # Create table
       #   summary:  255 char length. Standard for short-text fields
       #   steps:    JSON

@@ -386,7 +386,8 @@ def prompt_ai():
   except Exception as e:
     # 500 Internal Server Error: Generic server-side failures
     return jsonify({"error": "Failed to call AI"}), 500
-  
+
+# GET ALL PROJECTS for a given user
 @app.route('/project/<username>', methods=['GET'])
 def get_user_projects(username):
   connection = get_db_connection()
@@ -478,6 +479,29 @@ def create_project():
     except IntegrityError as e:
       # 400 Bad Request: Project already exists
       return jsonify({"error": "Project already exists."}), 400
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
+  # 500 Internal Server Error: Generic server-side failures
+  return jsonify({"error": "Failed to connect to database"}), 500
+
+# DELETE PROJECT
+@app.route('/project/<int:id>/delete', methods=['DELETE'])
+def delete_project(id):
+  connection = get_db_connection()
+  if connection:
+    try:
+      cursor = connection.cursor()
+      query = "DELETE FROM projects WHERE id = %s"
+      cursor.execute(query, (id,))
+      # Commit changes
+      connection.commit()
+      # 200 OK: For a successful request
+      return jsonify({"message": "Project deleted successfully."}), 200
+    except mysql.connector.Error as e:
+      # 500 Internal Server Error
+      return jsonify({"error": f"Database error: {e}"}), 500
     finally:
       # Close resources
       cursor.close()
