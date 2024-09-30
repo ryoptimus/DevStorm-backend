@@ -91,18 +91,18 @@ def create_users_table():
     cursor = connection.cursor()
     try:
       # Drop previous table of same name if one exists
-      # cursor.execute("DROP TABLE IF EXISTS users;")
-      # print("Finished dropping table (if existed).")
+      cursor.execute("DROP TABLE IF EXISTS users;")
+      print("Finished dropping 'users' table (if existed).")
       # Create table
       cursor.execute("""
           CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY, 
+                email VARCHAR(320) UNIQUE,
                 username VARCHAR(50) UNIQUE, 
                 password VARCHAR(60)
             );
         """)
-      # Change username VARCHAR(50) UNIQUE to email VARCHAR(320)
-      # UNIQUE eventually.
+      # Add email VARCHAR(320) UNIQUE
       
       # Commit changes
       connection.commit()
@@ -163,8 +163,9 @@ def get_user(username):
     if user:
       user_data = {
         "id": user[0], 
-        "username": user[1], 
-        "password": user[2]
+        "email": user[1], 
+        "username": user[2],
+        "password": user[3]
       }
       # 200 OK: For a successful request that returns data
       return jsonify(user_data), 200
@@ -188,8 +189,9 @@ def get_all_users():
         users_list = [
           {
             "id": user[0], 
-            "username": user[1], 
-            "password": user[2]
+            "email": user[1],
+            "username": user[2], 
+            "password": user[3]
           } 
           for user in users
         ]
@@ -212,15 +214,16 @@ def get_all_users():
 @app.route('/register', methods=['POST'])
 def register_user():
   data = request.get_json()
+  email = data['email']
   username = data['username']
   password = data['password']
   hashed_password = hash_password(password, bcrypt)
   connection = get_db_connection()
   if connection:
     cursor = connection.cursor()
-    query = "INSERT INTO users (username, password) VALUES (%s, %s)"
+    query = "INSERT INTO users (email, username, password) VALUES (%s, %s, %s)"
     try:
-      cursor.execute(query, (username, hashed_password,))
+      cursor.execute(query, (email, username, hashed_password,))
       # Commit changes
       connection.commit()
       # Generate access token for new user
