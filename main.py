@@ -91,18 +91,25 @@ def create_users_table():
     cursor = connection.cursor()
     try:
       # Drop previous table of same name if one exists
-      cursor.execute("DROP TABLE IF EXISTS users;")
-      print("Finished dropping 'users' table (if existed).")
+      # cursor.execute("DROP TABLE IF EXISTS users;")
+      # print("Finished dropping 'users' table (if existed).")
       # Create table
+      #   username:   50 char length. Standard for short-text fields
+      #   email:      Max length 320
+      #   membership: Two possible values - STANDARD or PREMIUM.
+      #               MAX length value - STANDARD. 8 chars
       cursor.execute("""
           CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY, 
                 email VARCHAR(320) UNIQUE,
                 username VARCHAR(50) UNIQUE, 
-                password VARCHAR(60)
+                password VARCHAR(60),
+                membership VARCHAR(8),
+                projects INT DEFAULT 0,
+                projects_completed INT DEFAULT 0,
+                date_joined DATETIME
             );
         """)
-      # Add email VARCHAR(320) UNIQUE
       
       # Commit changes
       connection.commit()
@@ -121,18 +128,21 @@ def create_projects_table():
     cursor = connection.cursor()
     try:
       # Drop previous table of same name if one exists
-      # cursor.execute("DROP TABLE IF EXISTS projects;")
-      # print("Finished dropping table (if existed).")
+      cursor.execute("DROP TABLE IF EXISTS projects;")
+      print("Finished dropping 'projects' table (if existed).")
       # Create table
       #   summary:  255 char length. Standard for short-text fields
-      #   steps:    TEXT <- should it just be VARCHAR(1000) or something?
+      #   steps:    JSON
+      #   status:   Two possible values - COMPLETE or IN_PROGRESS.
+      #             MAX length value - IN_PROGRESS. 11 chars
       cursor.execute("""
           CREATE TABLE IF NOT EXISTS projects (
                 id INT AUTO_INCREMENT PRIMARY KEY, 
                 username VARCHAR(50) UNIQUE, 
                 title VARCHAR(60),
                 summary VARCHAR(255),
-                steps TEXT
+                steps JSON,
+                status VARCHAR(11)
             );
         """)
       print("Created table 'projects.'")
@@ -165,7 +175,11 @@ def get_user(username):
         "id": user[0], 
         "email": user[1], 
         "username": user[2],
-        "password": user[3]
+        "password": user[3],
+        "membership": user[4],
+        "projects": user[5],
+        "projects_completed": user[6],
+        "date_joined": user[7]
       }
       # 200 OK: For a successful request that returns data
       return jsonify(user_data), 200
@@ -191,7 +205,11 @@ def get_all_users():
             "id": user[0], 
             "email": user[1],
             "username": user[2], 
-            "password": user[3]
+            "password": user[3],
+            "membership": user[4],
+            "projects": user[5],
+            "projects_completed": user[6],
+            "date_joined": user[7]
           } 
           for user in users
         ]
@@ -217,13 +235,15 @@ def register_user():
   email = data['email']
   username = data['username']
   password = data['password']
+  membership = data['membership']
   hashed_password = hash_password(password, bcrypt)
   connection = get_db_connection()
   if connection:
     cursor = connection.cursor()
-    query = "INSERT INTO users (email, username, password) VALUES (%s, %s, %s)"
+    date_joined = datetime.now()
+    query = "INSERT INTO users (email, username, password, membership, date_joined) VALUES (%s, %s, %s, %s, %s)"
     try:
-      cursor.execute(query, (email, username, hashed_password,))
+      cursor.execute(query, (email, username, hashed_password, membership, date_joined))
       # Commit changes
       connection.commit()
       # Generate access token for new user
@@ -504,6 +524,35 @@ def prompt_ai():
   except Exception as e:
     # 500 Internal Server Error: Generic server-side failures
     return jsonify({"error": "Failed to call AI"}), 500
+  
+@app.route('/project/<username>', methods=['GET'])
+def get_user_projects(username):
+  connection = get_db_connection()
+  if connection:
+    cursor = connection.cursor()
+    # Structure query, retrieve user
+    query = "SELECT * FROM projects WHERE username = %s"
+    cursor.execute(query, (username,))
+    projects = cursor.fetchall()
+    if projects:
+      projects_list = [
+          {
+            "id": project[0], 
+            "username": project[1], 
+            "title": project[2],
+            "summary": project[3],
+            # Convert JSON string to list format
+            "steps": json.loads(project[4]),
+            "status": project[5]
+          } 
+          for project in projects
+        ]
+      # 200 OK: For a successful request that returns data
+      return jsonify(projects_list), 200
+    else:
+      # 404 Not Found: Projects not found
+      return jsonify({"error": f"No projects found for user 'username'"}), 404
+      
 
 # GET ALL PROJECTS
 @app.route('/project', methods=['GET'])
@@ -522,7 +571,9 @@ def get_all_projects():
             "username": project[1], 
             "title": project[2],
             "summary": project[3],
-            "steps": project[4]
+            # Convert JSON string to list format
+            "steps": json.loads(project[4]),
+            "status": project[5]
           } 
           for project in projects
         ]
@@ -549,17 +600,18 @@ def create_project():
   username = data['username']
   title = data['title']
   summary = data['summary']
-  steps = data['steps']
+  # Convert list to JSON string
+  steps = json.dumps(data['steps']) 
+  status = data['status']
   connection = get_db_connection()
   if connection:
     cursor = connection.cursor()
-    query = "INSERT INTO projects (username, title, summary, steps) VALUES (%s, %s, %s, %s)"
+    query = "INSERT INTO projects (username, title, summary, steps, status) VALUES (%s, %s, %s, %s, %s)"
     try:
-      cursor.execute(query, (username, title, summary, steps))
+      cursor.execute(query, (username, title, summary, steps, status))
       # Commit changes
       connection.commit()
       response = jsonify({"message": "Project creation successful"})
-      
       # 201 Created: User added/created successfully
       return response, 201
     except IntegrityError as e:
