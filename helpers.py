@@ -36,25 +36,22 @@ def conjunct_me(list):
   else:
     return list[0]
   
+# PROMPT_AI_TO_GENERATE_TASKS helper: data model for task generation
+# class Tasks(BaseModel):
+  # tasks: List[List[str]]
+  
 # Task generation helper
-def engineer_taskgen_prompt(title, summary, steps):
+def engineer_taskgen_prompt(title, summary, languages, steps):
   prompt = f"""
-  You are project assistant for computer science and technology students. I will provide you with a project title, a brief summary, and a list of steps necessary for project completion. You must provide a list of tasks needed for each step. 
-
-  For each step, list the tasks with the format:
-    Step #:
-    - Task 1
-    - Task 2
-    ...
+  I will provide you with a project title, a brief summary, my languages/technologies preferences, and a list of steps necessary for project completion. You must provide a list of tasks needed for each step. 
 
   Project Title: {title}
   Summary: {summary}
-  Steps: 
-  """
+  Languages/Technologies: {conjunct_me(languages)}
+  Steps: """
   for step in steps:
-    prompt += f"\n{step}"
+    prompt += f"\n\t{step}"
   return prompt + "\n"
-  
 
 # LOGIN and REGISTER helpers: hash and verify passwords using bcrypt
 def hash_password(password: str, bcrypt):

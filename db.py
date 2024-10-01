@@ -77,6 +77,7 @@ def create_projects_table():
                 title VARCHAR(100),
                 summary VARCHAR(255),
                 steps JSON,
+                languages JSON,
                 status INT
             );
         """)
@@ -130,3 +131,32 @@ def create_tasks_table():
       connection.close()
   else:
     print("Failed to connect to database. Could not create 'tasks' table.")
+    
+def drop_tables():
+  connection = get_db_connection()
+  if connection:
+    cursor = connection.cursor()
+    try:
+      # Drop the 'tasks' table first, as it has the foreign key constraint on 'projects'
+      cursor.execute("DROP TABLE IF EXISTS tasks;")
+      print("Finished dropping 'tasks' table (if existed).")
+        
+      # Now, drop the 'projects' table
+      cursor.execute("DROP TABLE IF EXISTS projects;")
+      print("Finished dropping 'projects' table (if existed).")
+        
+      # Finally, drop the 'users' table
+      # cursor.execute("DROP TABLE IF EXISTS users;")
+      # print("Finished dropping 'users' table (if existed).")
+        
+      # Commit the changes
+      connection.commit()
+      print("Tables dropped successfully.")
+    except Exception as e:
+      print(f"Error dropping tables: {str(e)}")
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
+  else:
+    print("Failed to connect to database. Could not drop tables.")

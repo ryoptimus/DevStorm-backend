@@ -11,7 +11,7 @@ from flask_jwt_extended import (
 )
 from datetime import datetime
 from app import create_app
-from db import get_db_connection, create_users_table, create_projects_table, create_tasks_table
+from db import get_db_connection, create_users_table, create_projects_table, create_tasks_table, drop_tables
 from helpers import engineer_brainstorm_prompt, engineer_taskgen_prompt, hash_password, verify_password, ProjectIdea
 
 app, jwt, bcrypt = create_app()
@@ -340,7 +340,7 @@ def get_csrf_tokens():
 @app.route('/api/prompt', methods=['POST'])
 # Ensure route /prompt can only be accessed by users with valid JWT
 @jwt_required()
-def prompt_ai():
+def prompt_ai_to_brainstorm_project_idea():
   # Retrieve user identity from the JWT
   current_user = get_jwt_identity()
   # print(f"User '{current_user}' is authenticated.")
@@ -409,9 +409,10 @@ def get_project(id):
           "username": project[1], 
           "title": project[2],
           "summary": project[3],
-          # Convert JSON string to list format
+          # Convert JSON strings to list format
           "steps": json.loads(project[4]),
-          "status": project[5]
+          "languages": json.loads(project[5]),
+          "status": project[6]
         }
         # 200 OK: For a successful request that returns data
         return jsonify(project_data), 200
@@ -445,9 +446,10 @@ def get_user_projects(username):
             "username": project[1], 
             "title": project[2],
             "summary": project[3],
-            # Convert JSON string to list format
+            # Convert JSON strings to list format
             "steps": json.loads(project[4]),
-            "status": project[5]
+            "languages": json.loads(project[5]),
+            "status": project[6]
           } 
           for project in projects
         ]
@@ -474,9 +476,10 @@ def get_all_projects():
             "username": project[1], 
             "title": project[2],
             "summary": project[3],
-            # Convert JSON string to list format
+            # Convert JSON strings to list format
             "steps": json.loads(project[4]),
-            "status": project[5]
+            "languages": json.loads(project[5]),
+            "status": project[6]
           } 
           for project in projects
         ]
@@ -504,18 +507,32 @@ def create_project():
   title = data['title']
   summary = data['summary']
   steps = data['steps'] 
+  languages = data['languages']
   status = data['status']
   connection = get_db_connection()
   if connection:
     cursor = connection.cursor()
-    query = "INSERT INTO projects (username, title, summary, steps, status) VALUES (%s, %s, %s, %s, %s)"
+    query_a = "INSERT INTO projects (username, title, summary, steps, languages, status) VALUES (%s, %s, %s, %s, %s, %s)"
     try:
       # Convert 'steps' list to JSON string for storage
-      cursor.execute(query, (username, title, summary, json.dumps(steps), status))
+      cursor.execute(query_a, (username, title, summary, json.dumps(steps), json.dumps(languages), status))
+      # Retrieve last inserted project ID (pid)
+      pid = cursor.lastrowid
+      connection.commit()
+      # Generate tasks lists for each project step
+      tasks_lists = prompt_ai_to_generate_tasks(engineer_taskgen_prompt(title, summary, languages, steps))
+      # Structure task insertion query
+      query_b = "INSERT INTO tasks (pid, description, priority, status) VALUES (%s, %s, %s, %s)"
+      # Enumerate starting from 1 to extract priority based on step number
+      for priority, tasks_list in enumerate(tasks_lists, start=1):
+        # Get tasks_list for each step, defaulting to empty list if not found
+        for task in tasks_list.get('tasks', []):
+          # Execute query. Status is default 1 to indicate it is "to-do"
+          cursor.execute(query_b, (pid, task, priority, 1))
       # Commit changes
       connection.commit()
-      response = jsonify({"message": "Project creation successful"})
-      # 201 Created: User added/created successfully
+      response = jsonify({"message": "Project, tasks creation successful"})
+      # 201 Created: Project added/created successfully
       return response, 201
     except IntegrityError as e:
       # 400 Bad Request: Project already exists
@@ -527,6 +544,54 @@ def create_project():
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
 
+def prompt_ai_to_generate_tasks(prompt):
+  print(f"Prompt: {prompt}")
+  try:
+    # Initialize Groq instance
+    client = Groq(api_key=os.getenv("GROQ_KEY"),)
+    response = client.chat.completions.create(
+      messages=[
+        # Set the behavior of the assistant and provide instructions
+        # for how it should behave while handling the prompt
+        {
+          "role": "system",
+          # Pass the JSON schema to the model
+          "content": (
+            "You are project assistant that provides task lists for each project step in JSON.\n"
+            "The JSON object must use the schema: "
+            "{'tasks_lists': [{'title': 'Step 1 title', 'tasks': ['task 1', 'task 2', 'task 3']}, ...]}"
+          ),
+        },
+        # Set user message
+        {
+          "role": "user",
+          "content": prompt,
+        },
+      ],
+      # Specify language model
+      model="llama3-8b-8192",
+      # Set temperature to 0 to encourage more deterministic output and reduced
+      # randomness.
+      temperature=0,
+      # Streaming is not supported in JSON mode
+      stream=False,
+      # Enable JSON mode by setting the response format
+      response_format={"type": "json_object"},
+    )
+    # print(f"Response: {response}")
+    generated_text = response.choices[0].message.content
+    print(f"Generated text: {generated_text}")
+    parsed_response = json.loads(generated_text)
+    # Extract 'tasks_lists' from parsed_response, defaulting to empty list if
+    # not found
+    tasks_lists = parsed_response.get('tasks_lists', [])
+    # Return tasks_list
+    return tasks_lists
+  except Exception as e:
+    # Log the error and return None
+    print(f"Error in AI generation: {e}")
+    return None
+
 # DELETE PROJECT
 @app.route('/project/<int:id>/delete', methods=['DELETE'])
 def delete_project(id):
@@ -534,8 +599,14 @@ def delete_project(id):
   if connection:
     try:
       cursor = connection.cursor()
-      query = "DELETE FROM projects WHERE id = %s"
-      cursor.execute(query, (id,))
+      query_a = "DELETE FROM tasks where pid = %s"
+      cursor.execute(query_a, (id,))
+      query_b = "DELETE FROM projects WHERE id = %s"
+      cursor.execute(query_b, (id,))
+      rows_affected = cursor.rowcount
+      if rows_affected == 0:
+        # 404 Not Found: Project not found
+        return jsonify({"error": "Project not found."}), 404
       # Commit changes
       connection.commit()
       # 200 OK: For a successful request
@@ -665,7 +736,8 @@ def get_project_tasks(pid):
     else:
       # 404 Not Found: Tasks not found
       return jsonify({"error": f"No tasks found for project with ID {pid}"}), 404
-  
+
+# drop_tables()
 create_users_table()
 create_projects_table()
 create_tasks_table()
