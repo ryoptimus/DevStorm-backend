@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Create bcrypt object
+bcrypt = Bcrypt()
+
 def create_app():
     app = Flask(__name__)
 
@@ -56,5 +59,5 @@ def create_app():
     
     jwt = JWTManager(app)
     # Create bcrypt object
-    bcrypt = Bcrypt(app)
+    bcrypt.init_app(app)
     return app, jwt, bcrypt
