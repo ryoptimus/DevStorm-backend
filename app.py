@@ -13,6 +13,9 @@ load_dotenv()
 # Create bcrypt object
 bcrypt = Bcrypt()
 
+# Initialize JWTManager
+jwt = JWTManager()
+
 def create_app():
     app = Flask(__name__)
 
@@ -57,7 +60,8 @@ def create_app():
     # Explicitly set separate path for refresh tokens
     app.config['JWT_REFRESH_COOKIE_PATH'] = '/'  
     
-    jwt = JWTManager(app)
+    #Initialize JWT with the app
+    jwt.init_app(app)
     # Create bcrypt object
     bcrypt.init_app(app)
     return app, jwt, bcrypt

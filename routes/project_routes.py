@@ -9,6 +9,7 @@ from mysql.connector import IntegrityError
 from groq import Groq
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from helpers import engineer_taskgen_prompt
+from routes.ai_routes import prompt_ai_to_generate_tasks
 
 project_bp = Blueprint('project_bp', __name__)
 
@@ -173,55 +174,6 @@ def create_project():
       connection.close()
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
-  
-# Helper function to generate tasks
-def prompt_ai_to_generate_tasks(prompt):
-  print(f"Prompt: {prompt}")
-  try:
-    # Initialize Groq instance
-    client = Groq(api_key=os.getenv("GROQ_KEY"),)
-    response = client.chat.completions.create(
-      messages=[
-        # Set the behavior of the assistant and provide instructions
-        # for how it should behave while handling the prompt
-        {
-          "role": "system",
-          # Pass the JSON schema to the model
-          "content": (
-            "You are project assistant that provides task lists for each project step in JSON.\n"
-            "The JSON object must use the schema: "
-            "{'tasks_lists': [{'title': 'Step 1 title', 'tasks': ['task 1', 'task 2', 'task 3']}, ...]}"
-          ),
-        },
-        # Set user message
-        {
-          "role": "user",
-          "content": prompt,
-        },
-      ],
-      # Specify language model
-      model="llama3-8b-8192",
-      # Set temperature to 0 to encourage more deterministic output and reduced
-      # randomness.
-      temperature=0,
-      # Streaming is not supported in JSON mode
-      stream=False,
-      # Enable JSON mode by setting the response format
-      response_format={"type": "json_object"},
-    )
-    # print(f"Response: {response}")
-    generated_text = response.choices[0].message.content
-    print(f"Generated text: {generated_text}")
-    parsed_response = json.loads(generated_text)
-    # Extract 'tasks_lists' from parsed_response, defaulting to empty list if
-    # not found
-    tasks_lists = parsed_response.get('tasks_lists', [])
-    # Return tasks_list
-    return tasks_lists
-  except Exception as e:
-    # Log the error and return None
-    print(f"Error in AI generation: {e}")
-    return None
 
 # DELETE PROJECT
 @project_bp.route('/project/<int:id>/delete', methods=['DELETE'])
