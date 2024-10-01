@@ -16,12 +16,12 @@ from helpers import engineer_brainstorm_prompt, hash_password, verify_password, 
 
 app, jwt, bcrypt = create_app()
 
-# Import blueprint from the routes module
+# Import blueprints from the routes module
 from routes.user_routes import user_bp
 from routes.project_routes import project_bp
 from routes.task_routes import task_bp
 
-# Register the blueprint
+# Register the blueprints
 app.register_blueprint(user_bp)
 app.register_blueprint(project_bp)
 app.register_blueprint(task_bp)
@@ -50,7 +50,7 @@ def register_user():
       # Commit changes
       connection.commit()
       # Generate access token for new user
-      access_token = create_access_token(identity=username)
+      access_token = create_access_token(identity=username, fresh=True)
       refresh_token = create_refresh_token(identity=username)
       response = jsonify({"message": "Registration successful, you are now logged in"})
       set_access_cookies(response, access_token)
@@ -98,7 +98,7 @@ def login():
         # Store tokens in cookies
         set_access_cookies(response, access_token)
         set_refresh_cookies(response, refresh_token)
-        print(f"Login data:\n\tuser: {username}\n\taccess_token: {access_token}\n\trefresh_token: {refresh_token}")
+        # print(f"Login data:\n\tuser: {username}\n\taccess_token: {access_token}\n\trefresh_token: {refresh_token}")
         # 200 OK: For a successful request
         return response, 200
       else:

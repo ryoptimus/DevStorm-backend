@@ -7,7 +7,7 @@ from flask import Blueprint, jsonify, request
 from db import get_db_connection
 from mysql.connector import IntegrityError
 from groq import Groq
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from helpers import engineer_taskgen_prompt
 
 project_bp = Blueprint('project_bp', __name__)
@@ -88,55 +88,66 @@ def get_project(id):
   return jsonify({"error": "Failed to connect to database"}), 500 
 
 # GET ALL PROJECTS for a given user
-@project_bp.route('/project/<username>', methods=['GET'])
-def get_user_projects(username):
-  connection = get_db_connection()
-  if connection:
-    cursor = connection.cursor()
-    # Structure query, retrieve user
-    query = "SELECT * FROM projects WHERE username = %s"
-    cursor.execute(query, (username,))
-    projects = cursor.fetchall()
-    if projects:
-      projects_list = [
-          {
-            "id": project[0], 
-            "username": project[1], 
-            "title": project[2],
-            "summary": project[3],
-            # Convert JSON strings to list format
-            "steps": json.loads(project[4]),
-            "languages": json.loads(project[5]),
-            "status": project[6]
-          } 
-          for project in projects
-        ]
-      # 200 OK: For a successful request that returns data
-      return jsonify(projects_list), 200
-    else:
-      # 404 Not Found: Projects not found
-      return jsonify({"error": f"No projects found for user '{username}'"}), 404
+@project_bp.route('/project/by-user', methods=['GET'])
+def get_user_projects():
+    username = get_jwt_identity()
+    connection = get_db_connection()
+    if connection:
+        cursor = connection.cursor()
+        # Structure query, retrieve user
+        query = "SELECT * FROM projects WHERE username = %s"
+        try:
+            cursor.execute(query, (username,))
+            projects = cursor.fetchall()
+            if projects:
+                projects_list = [
+                    {
+                        "id": project[0], 
+                        "username": project[1], 
+                        "title": project[2],
+                        "summary": project[3],
+                        # Convert JSON strings to list format
+                        "steps": json.loads(project[4]),
+                        "languages": json.loads(project[5]),
+                        "status": project[6]
+                    } 
+                    for project in projects
+                ]
+                # 200 OK: For a successful request that returns data
+                return jsonify(projects_list), 200
+            else:
+                # 404 Not Found: Projects not found
+                return jsonify({"error": f"No projects found for user '{username}'"}), 404
+        except mysql.connector.Error as e:
+            # 500 Internal Server Error: Generic server-side failures
+            return jsonify({"error": str(e)}), 500
+        finally:
+            # Close resources
+            cursor.close()
+            connection.close()
+    # 500 Internal Server Error: Generic server-side failures
+    return jsonify({"error": "Failed to connect to database"}), 500 
   
 # CREATE PROJECT
 @project_bp.route('/project/create', methods=['POST'])
 @jwt_required()
 def create_project():
   data = request.get_json()
-  username = data['username']
+  username = get_jwt_identity()
   title = data['title']
   summary = data['summary']
   steps = data['steps'] 
   languages = data['languages']
-  status = data['status']
   connection = get_db_connection()
   if connection:
     cursor = connection.cursor()
     query_a = "INSERT INTO projects (username, title, summary, steps, languages, status) VALUES (%s, %s, %s, %s, %s, %s)"
     try:
       # Convert 'steps' list to JSON string for storage
-      cursor.execute(query_a, (username, title, summary, json.dumps(steps), json.dumps(languages), status))
+      cursor.execute(query_a, (username, title, summary, json.dumps(steps), json.dumps(languages), 0))
       # Retrieve last inserted project ID (pid)
       pid = cursor.lastrowid
+      # Commit changes
       connection.commit()
       # Generate tasks lists for each project step
       tasks_lists = prompt_ai_to_generate_tasks(engineer_taskgen_prompt(title, summary, languages, steps))
@@ -154,8 +165,8 @@ def create_project():
       # 201 Created: Project added/created successfully
       return response, 201
     except IntegrityError as e:
-      # 400 Bad Request: Project already exists
-      return jsonify({"error": "Project already exists."}), 400
+      # 400 Bad Request: Project creation failed
+      return jsonify({"error": "Project creation failed."}), 400
     finally:
       # Close resources
       cursor.close()

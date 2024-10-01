@@ -100,6 +100,7 @@ def create_task():
   return jsonify({"error": "Failed to connect to database"}), 500
 
 # DELETE TASK
+# Takes unique task's ID as parameter
 @task_bp.route('/task/<int:id>/delete', methods=['DELETE'])
 def delete_task(id):
   connection = get_db_connection()
