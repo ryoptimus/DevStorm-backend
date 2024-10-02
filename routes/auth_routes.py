@@ -24,7 +24,6 @@ def register_user():
   email = data['email']
   username = data['username']
   password = data['password']
-  membership = data['membership']
   hashed_password = hash_password(password, bcrypt)
   connection = get_db_connection()
   if connection:
@@ -32,7 +31,7 @@ def register_user():
     date_joined = datetime.now()
     query = "INSERT INTO users (email, username, password, membership, date_joined) VALUES (%s, %s, %s, %s, %s)"
     try:
-      cursor.execute(query, (email, username, hashed_password, membership, date_joined))
+      cursor.execute(query, (email, username, hashed_password, "STANDARD", date_joined))
       # Commit changes
       connection.commit()
       # Generate access token for new user

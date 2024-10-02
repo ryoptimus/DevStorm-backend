@@ -89,9 +89,9 @@ def get_user():
 
 # UPDATE
 # Updates password of a given user
-@user_bp.route('/user/update', methods=['PUT'])
+@user_bp.route('/user/update-password', methods=['PUT'])
 @jwt_required()
-def update_record():
+def update_password():
     username = get_jwt_identity()
     data = request.get_json()
     current_password = data['current_password']
@@ -119,6 +119,58 @@ def update_record():
                     connection.commit()
                     # 200 OK: For a successful request
                     return jsonify({"message": "Password updated successfully"}), 200
+                else:
+                    # 401 Unauthorized: Current password is incorrect
+                    return jsonify({"error": "Invalid current password"}), 401
+            else:
+                # 404 Not Found: User not found
+                return jsonify({"error": "User not found"}), 404
+        except mysql.connector.Error as e:
+            # 500 Internal Server Error
+            return jsonify({"error": f"Database error: {e}"}), 500
+        finally:
+            # Close resources
+            cursor.close()
+            connection.close()
+    # 500 Internal Server Error: Generic server-side failures
+    return jsonify({"error": "Failed to connect to database"}), 500
+
+# UPDATE
+# Updates password of a given user
+@user_bp.route('/user/update-username', methods=['PUT'])
+@jwt_required()
+def update_username():
+    current_username = get_jwt_identity()
+    data = request.get_json()
+    new_username = data['new_username']
+    current_password = data['current_password']
+    connection = get_db_connection()
+    if connection:
+        try:
+            cursor = connection.cursor()
+            # First, fetch current user and verify password
+            query_a = "SELECT * FROM users WHERE username = %s"
+            cursor.execute(query_a, (current_username,))
+            user = cursor.fetchone()
+            if user:
+                # Retrieve stored password hash for user
+                stored_hash = user[3]
+                # print(f"stored hash: {stored_hash}")
+                # Check that current password matches stored password
+                if verify_password(current_password, stored_hash, bcrypt):
+                    # Check if new username already exists in table
+                    query_b = "SELECT * FROM users WHERE username = %s"
+                    cursor.execute(query_b, (new_username,))
+                    existing_user = cursor.fetchone()
+                    if existing_user:
+                        # 409 Conflict: Username already exists
+                        return jsonify({"error": "Username already exists"}), 409
+                    # Structure query to update user record
+                    query_c = "UPDATE users SET username = %s WHERE username = %s"
+                    cursor.execute(query_c, (new_username, current_username,))
+                    connection.commit()
+                    # 200 OK: For a successful request
+                    return jsonify({"message": "Username updated successfully"}), 200
                 else:
                     # 401 Unauthorized: Current password is incorrect
                     return jsonify({"error": "Invalid current password"}), 401
