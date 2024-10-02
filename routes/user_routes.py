@@ -136,7 +136,7 @@ def update_password():
     return jsonify({"error": "Failed to connect to database"}), 500
 
 # UPDATE
-# Updates password of a given user
+# Updates username of a given user
 @user_bp.route('/user/update-username', methods=['PUT'])
 @jwt_required()
 def update_username():

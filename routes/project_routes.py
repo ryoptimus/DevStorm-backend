@@ -162,12 +162,65 @@ def create_project():
           cursor.execute(query_b, (pid, task, priority, 1))
       # Commit changes
       connection.commit()
+      query_c = "UPDATE users SET projects = projects + 1 WHERE username = %s"
+      cursor.execute(query_c, (username,))
+      # Commit changes
+      connection.commit()
       response = jsonify({"message": "Project, tasks creation successful"})
       # 201 Created: Project added/created successfully
       return response, 201
     except IntegrityError as e:
+      # Roll back changes if error occurs
+      connection.rollback()
       # 400 Bad Request: Project creation failed
       return jsonify({"error": "Project creation failed."}), 400
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
+  # 500 Internal Server Error: Generic server-side failures
+  return jsonify({"error": "Failed to connect to database"}), 500
+
+# UPDATE
+# Updates status of a given project
+# TODO: Add check that this is indeed a project in username's username
+@project_bp.route('/project/<int:id>/update-status', methods=['PUT'])
+@jwt_required()
+def update_project_status(id):
+  username = get_jwt_identity()
+  connection = get_db_connection()
+  if connection:
+    cursor = connection.cursor()
+    query_a = "SELECT * FROM projects WHERE id = %s"
+    try:
+      cursor.execute(query_a, (id,))
+      project = cursor.fetchone()
+      if project:
+        project_status = project[6]
+        print(f"Project ID {id} current status: {project_status}")
+        # Prepare queries
+        if project_status == 0:
+          new_status = 1
+          query_c = "UPDATE users SET projects_completed = projects_completed + 1 WHERE username = %s"
+        else:
+          new_status = 0
+          query_c = "UPDATE users SET projects_completed = projects_completed - 1 WHERE username = %s"
+
+        # Update project status
+        query_b = "UPDATE projects SET status = %s WHERE id = %s"
+        cursor.execute(query_b, (new_status, id))
+        # Update user's project completion count
+        cursor.execute(query_c, (username,))    
+        # Commit both changes together
+        connection.commit()
+        # 200 OK: For a successful request
+        return jsonify({"message": "Project status updated successfully"}), 200
+      else:
+        # 404 Not Found: User not found
+        return jsonify({"error": "Project not found"}), 404
+    except mysql.connector.Error as e:
+      # 500 Internal Server Error
+      return jsonify({"error": f"Database error: {e}"}), 500
     finally:
       # Close resources
       cursor.close()
