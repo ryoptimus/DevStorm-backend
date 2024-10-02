@@ -50,6 +50,7 @@ def get_all_users():
 
 # GET user
 @user_bp.route('/user/info', methods=['GET'])
+@jwt_required()
 def get_user():
     username = get_jwt_identity()
     connection = get_db_connection()

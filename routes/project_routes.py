@@ -1,6 +1,5 @@
 # project_routes.py
 
-import os
 import json
 import mysql.connector
 from flask import Blueprint, jsonify, request
@@ -90,6 +89,7 @@ def get_project(id):
 
 # GET ALL PROJECTS for a given user
 @project_bp.route('/project/by-user', methods=['GET'])
+@jwt_required()
 def get_user_projects():
     username = get_jwt_identity()
     connection = get_db_connection()
