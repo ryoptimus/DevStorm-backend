@@ -130,12 +130,11 @@ def get_project_tasks(pid):
   return jsonify({"error": "Failed to connect to database"}), 500
   
 # CREATE TASK
-@task_bp.route('/task/create', methods=['POST'])
+@task_bp.route('/task/<int:pid>/create', methods=['POST'])
 @jwt_required()
-def create_task():
+def create_task(pid):
   username = get_jwt_identity()
   data = request.get_json()
-  pid = data['pid']
   description = data['description']
   priority = data['priority']
   status = data['status']
