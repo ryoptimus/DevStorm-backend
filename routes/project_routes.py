@@ -5,7 +5,6 @@ import mysql.connector
 from flask import Blueprint, jsonify, request
 from db import get_db_connection
 from mysql.connector import IntegrityError
-from groq import Groq
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from helpers import engineer_taskgen_prompt
 from routes.ai_routes import prompt_ai_to_generate_tasks

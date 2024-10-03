@@ -43,6 +43,39 @@ def get_all_tasks():
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
 
+@task_bp.route('/task/<int:id>/get', methods=['GET'])
+def get_task(id):
+  connection = get_db_connection()
+  if connection:
+    cursor = connection.cursor()
+    # Structure query, retrieve user
+    query = "SELECT * FROM tasks WHERE id = %s"
+    try:
+      cursor.execute(query, (id,))
+      task = cursor.fetchone()
+      if task:
+        task_data = {
+          "id": task[0], 
+          "pid": task[1], 
+          "description": task[2],
+          "priority": task[3],
+          "status": task[4]
+        }
+        # 200 OK: For a successful request that returns data
+        return jsonify(task_data), 200
+      else:
+        # 404 Not Found: Projects not found
+        return jsonify({"error": f"No task found with ID {id}"}), 404
+    except mysql.connector.Error as e:
+      # 500 Internal Server Error: Generic server-side failures
+      return jsonify({"error": str(e)}), 500
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
+  # 500 Internal Server Error: Generic server-side failures
+  return jsonify({"error": "Failed to connect to database"}), 500
+
 # GET ALL TASKS for a given project
 @task_bp.route('/task/<int:pid>', methods=['GET'])
 def get_project_tasks(pid):
@@ -69,6 +102,8 @@ def get_project_tasks(pid):
     else:
       # 404 Not Found: Tasks not found
       return jsonify({"error": f"No tasks found for project with ID {pid}"}), 404
+  # 500 Internal Server Error: Generic server-side failures
+  return jsonify({"error": "Failed to connect to database"}), 500
   
 # CREATE TASK
 @task_bp.route('/task/create', methods=['POST'])
