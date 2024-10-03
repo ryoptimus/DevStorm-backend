@@ -51,14 +51,16 @@ def get_all_projects():
   return jsonify({"error": "Failed to connect to database"}), 500
 
 @project_bp.route('/project/<int:id>', methods=['GET'])
+@jwt_required()
 def get_project(id):
+  username = get_jwt_identity()
   connection = get_db_connection()
   if connection:
     cursor = connection.cursor()
     # Structure query, retrieve project
-    query = "SELECT * FROM projects WHERE id = %s"
+    query = "SELECT * FROM projects WHERE id = %s AND username = %s"
     try:
-      cursor.execute(query, (id,))
+      cursor.execute(query, (id, username))
       project = cursor.fetchone()
       if project:
         project_data = {
@@ -75,7 +77,7 @@ def get_project(id):
         return jsonify(project_data), 200
       else:
         # 404 Not Found: Projects not found
-        return jsonify({"error": f"No project found with ID {id}"}), 404
+        return jsonify({"error": f"No project found with ID {id} under user {username}"}), 404
     except mysql.connector.Error as e:
       # 500 Internal Server Error: Generic server-side failures
       return jsonify({"error": str(e)}), 500
@@ -229,23 +231,28 @@ def update_project_status(id):
 
 # DELETE PROJECT
 @project_bp.route('/project/<int:id>/delete', methods=['DELETE'])
+@jwt_required()
 def delete_project(id):
+  username = get_jwt_identity()
   connection = get_db_connection()
   if connection:
     try:
       cursor = connection.cursor()
-      query_a = "DELETE FROM tasks where pid = %s"
-      cursor.execute(query_a, (id,))
-      query_b = "DELETE FROM projects WHERE id = %s"
-      cursor.execute(query_b, (id,))
-      rows_affected = cursor.rowcount
-      if rows_affected == 0:
+      query_a = "SELECT * FROM projects WHERE id = %s AND username = %s"
+      cursor.execute(query_a, (id, username))
+      project = cursor.fetchone()
+      if project:
+        query_b = "DELETE FROM tasks where pid = %s"
+        cursor.execute(query_b, (id,))
+        query_c = "DELETE FROM projects WHERE id = %s"
+        cursor.execute(query_c, (id,))
+        # Commit changes
+        connection.commit()
+        # 200 OK: For a successful request
+        return jsonify({"message": "Project deleted successfully."}), 200
+      else:
         # 404 Not Found: Project not found
         return jsonify({"error": "Project not found."}), 404
-      # Commit changes
-      connection.commit()
-      # 200 OK: For a successful request
-      return jsonify({"message": "Project deleted successfully."}), 200
     except mysql.connector.Error as e:
       # 500 Internal Server Error
       return jsonify({"error": f"Database error: {e}"}), 500
