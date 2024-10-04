@@ -168,6 +168,92 @@ def create_task(pid):
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
 
+@task_bp.route('/task/<int:id>/update-status', methods=['PUT'])
+@jwt_required()
+def update_task_status(id):
+  username = get_jwt_identity()
+  data = request.get_json()
+  status = data['status']
+  connection = get_db_connection()
+  if connection:
+    cursor = connection.cursor()
+    try:
+      # First, fetch task to acquire its project ID for authorization
+      query_a = "SELECT * FROM tasks WHERE id = %s"
+      cursor.execute(query_a, (id,))
+      task = cursor.fetchone()
+      if task:
+        # Authorize that the current user matches the user listed as project owner
+        query_b = "SELECT * FROM projects WHERE id = %s AND username = %s"
+        cursor.execute(query_b, (task[1], username))
+        project = cursor.fetchone()
+        if project:
+          query_c = "UPDATE tasks SET status = %s WHERE id = %s"
+          cursor.execute(query_c, (status, id))
+          # Commit changes
+          connection.commit()
+          # 200 OK: For a successful request
+          return jsonify({"message": "Task updated successfully."}), 200
+        else:
+          # Return 403 Forbidden: Project exists (else the task would not exist), but
+          # does not belong to the current user
+          return jsonify({"error": "You do not have permission to access this project."}), 403
+      else:
+        # 404 Not Found: Task not found
+        return jsonify({"error": f"No task found with ID {id}"}), 404
+    except mysql.connector.Error as e:
+      # 500 Internal Server Error
+      return jsonify({"error": f"Database error: {e}"}), 500
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
+  # 500 Internal Server Error: Generic server-side failures
+  return jsonify({"error": "Failed to connect to database"}), 500
+
+@task_bp.route('/task/<int:id>/update-description', methods=['PUT'])
+@jwt_required()
+def update_task_description(id):
+  username = get_jwt_identity()
+  data = request.get_json()
+  description = data['description']
+  connection = get_db_connection()
+  if connection:
+    cursor = connection.cursor()
+    try:
+      # First, fetch task to acquire its project ID for authorization
+      query_a = "SELECT * FROM tasks WHERE id = %s"
+      cursor.execute(query_a, (id,))
+      task = cursor.fetchone()
+      if task:
+        # Authorize that the current user matches the user listed as project owner
+        query_b = "SELECT * FROM projects WHERE id = %s AND username = %s"
+        cursor.execute(query_b, (task[1], username))
+        project = cursor.fetchone()
+        if project:
+          query_c = "UPDATE tasks SET description = %s WHERE id = %s"
+          cursor.execute(query_c, (description, id))
+          # Commit changes
+          connection.commit()
+          # 200 OK: For a successful request
+          return jsonify({"message": "Task updated successfully."}), 200
+        else:
+          # Return 403 Forbidden: Project exists (else the task would not exist), but
+          # does not belong to the current user
+          return jsonify({"error": "You do not have permission to access this project."}), 403
+      else:
+        # 404 Not Found: Task not found
+        return jsonify({"error": f"No task found with ID {id}"}), 404
+    except mysql.connector.Error as e:
+      # 500 Internal Server Error
+      return jsonify({"error": f"Database error: {e}"}), 500
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
+  # 500 Internal Server Error: Generic server-side failures
+  return jsonify({"error": "Failed to connect to database"}), 500
+
 # DELETE TASK
 # Takes unique task's ID as parameter
 @task_bp.route('/task/<int:id>/delete', methods=['DELETE'])
@@ -199,7 +285,7 @@ def delete_task(id):
           # does not belong to the current user
           return jsonify({"error": "You do not have permission to access this project."}), 403
       else:
-        # 404 Not Found: Projects not found
+        # 404 Not Found: Project not found
         return jsonify({"error": f"No task found with ID {id}"}), 404
     except mysql.connector.Error as e:
       # 500 Internal Server Error
