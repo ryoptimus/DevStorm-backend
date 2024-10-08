@@ -282,6 +282,12 @@ def delete_project(id):
       # Delete project
       query_d = "DELETE FROM projects WHERE id = %s"
       cursor.execute(query_d, (id,))
+      
+      query_e = "UPDATE users SET projects = projects - 1 WHERE username = %s"
+      cursor.execute(query_e, (username,))
+      if project[6] == 1:
+        query_f = "UPDATE users SET projects_completed = projects_completed - 1 WHERE username = %s"
+        cursor.execute(query_f, (username,))
       # Commit changes
       connection.commit()
       # 200 OK: For a successful request
