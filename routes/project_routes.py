@@ -118,8 +118,9 @@ def get_user_projects():
                 # 200 OK: For a successful request that returns data
                 return jsonify(projects_list), 200
             else:
-                # 404 Not Found: Projects not found
-                return jsonify({"error": f"No projects found for user '{username}'"}), 404
+                # Return empty list and 200 OK: Request successful but
+                # no projects found
+                return jsonify([]), 200
         except mysql.connector.Error as e:
             # 500 Internal Server Error: Generic server-side failures
             return jsonify({"error": str(e)}), 500
