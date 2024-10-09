@@ -1,5 +1,6 @@
 # app.py
 import os
+import redis
 from flask import Flask
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
@@ -58,7 +59,11 @@ def create_app():
     # root URL and all branching paths
     app.config['JWT_ACCESS_COOKIE_PATH'] = '/'
     # Explicitly set separate path for refresh tokens
-    app.config['JWT_REFRESH_COOKIE_PATH'] = '/'  
+    app.config['JWT_REFRESH_COOKIE_PATH'] = '/' 
+    
+    app.blocklist = redis.StrictRedis(
+        host="localhost", port=6379, db=0, decode_responses=True
+    )
     
     #Initialize JWT with the app
     jwt.init_app(app)

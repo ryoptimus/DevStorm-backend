@@ -22,7 +22,7 @@ def prompt_ai_to_brainstorm_project_idea():
   technologies = data['technology']
   industries = data['industries']
   prompt = engineer_brainstorm_prompt(roles, technologies, industries)
-  print(f"Prompt: {prompt}")
+  # print(f"Prompt: {prompt}")
   if not data:
     # 400 Bad Request: No inputs provided
     return jsonify({"error": "No inputs provided"}), 400
@@ -59,7 +59,7 @@ def prompt_ai_to_brainstorm_project_idea():
       response_format={"type": "json_object"},
     )
     generated_text = response.choices[0].message.content
-    print(f"Generated text: {generated_text}")
+    # print(f"Generated text: {generated_text}")
     # 200 OK: For a successful request that returns data
     return jsonify({"response": generated_text}), 200
   except Exception as e:
@@ -68,7 +68,7 @@ def prompt_ai_to_brainstorm_project_idea():
 
 # Helper function to generate tasks
 def prompt_ai_to_generate_tasks(prompt):
-  print(f"Prompt: {prompt}")
+  # print(f"Prompt: {prompt}")
   try:
     # Initialize Groq instance
     client = Groq(api_key=os.getenv("GROQ_KEY"),)
@@ -103,7 +103,7 @@ def prompt_ai_to_generate_tasks(prompt):
     )
     # print(f"Response: {response}")
     generated_text = response.choices[0].message.content
-    print(f"Generated text: {generated_text}")
+    # print(f"Generated text: {generated_text}")
     parsed_response = json.loads(generated_text)
     # Extract 'tasks_lists' from parsed_response, defaulting to empty list if
     # not found

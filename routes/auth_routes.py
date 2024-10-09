@@ -1,24 +1,33 @@
 # auth_routes.py
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import (
     create_access_token, create_refresh_token,
     jwt_required, get_jwt, get_jwt_identity, set_access_cookies, set_refresh_cookies,
     unset_jwt_cookies, verify_jwt_in_request
 )
 from mysql.connector import IntegrityError
-from datetime import datetime
+from datetime import datetime, timedelta
 from app import bcrypt, jwt
 from db import get_db_connection
 from helpers import hash_password, verify_password
 
 auth_bp = Blueprint('auth_bp', __name__)
 
-# Create blocklist
-blocklist = set()
-
 def add_to_blocklist(jti):
-  blocklist.add(jti)
+  current_app.blocklist.set(jti, "", ex=timedelta(minutes=30))
+  
+def print_blocklist():
+  print("Printing blocklist")
+  keys = current_app.blocklist.keys('*')
+  if not keys:
+    print("Blocklist is empty")
+    return
+  
+  for key in keys:
+    # Get TTL (time-to-live) for each key
+    ttl = current_app.blocklist.ttl(key)
+    print(f"Blocked jti: {key}, expires in {ttl} seconds")
 
 # REGISTER
 @auth_bp.route('/register', methods=['POST'])
@@ -99,11 +108,12 @@ def login():
   return jsonify({"error": "Failed to connect to database"}), 500
 
 @jwt.token_in_blocklist_loader
-def token_in_blocklist(jwt_header, jwt_data):
+def token_in_blocklist(jwt_header, jwt_payload: dict):
+  # print_blocklist()
   # Get token's unique identifier (jti)
-  jti = jwt_data['jti']
-  # print(f"blocklist: {list(blocklist)}")
-  return jti in blocklist
+  jti = jwt_payload['jti']
+  token_in_redis = current_app.blocklist.get(jti)
+  return token_in_redis is not None
 
 @auth_bp.route('/token/refresh', methods=['POST'])
 @jwt_required(refresh=True)
@@ -113,7 +123,7 @@ def refresh():
   # Get token's unique identifier (jti)
   jti = get_jwt()['jti']
   # Add token's jti to blocklist
-  blocklist.add(jti)
+  add_to_blocklist(jti)
   # Create new access token
   new_access_token = create_access_token(identity=identity, fresh=True)
   response = jsonify({"message": "Access token refreshed"})
@@ -132,7 +142,7 @@ def logout():
     access_token = get_jwt()
     if access_token:
       jti_access = access_token["jti"]
-      blocklist.add(jti_access)
+      add_to_blocklist(jti_access)
   except Exception:
     # Token might be expired, so skip blocklisting access token
     pass  
@@ -143,7 +153,7 @@ def logout():
     refresh_token = get_jwt(refresh=True)
     if refresh_token:
       jti_refresh = refresh_token["jti"]
-      blocklist.add(jti_refresh)
+      add_to_blocklist(jti_refresh)
   except Exception:
     # Token might be expired, so skip blocklisting refresh token
     pass  

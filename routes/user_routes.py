@@ -1,12 +1,12 @@
 # user_routes.py
 
 import mysql.connector
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from app import bcrypt
+from datetime import timedelta
 from db import get_db_connection
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt, verify_jwt_in_request, unset_jwt_cookies
 from helpers import hash_password, verify_password
-from auth_routes import add_to_blocklist
 
 user_bp = Blueprint('user_bp', __name__)
 
@@ -195,7 +195,7 @@ def delete_user():
     username = get_jwt_identity()
     # Mimic logout. Get current access token's jti
     jti = get_jwt()['jti']
-    add_to_blocklist(jti)
+    current_app.blocklist.set(jti, "", ex=timedelta(minutes=30))
     connection = get_db_connection()
     try:
         # Try to verify the refresh token if present
@@ -203,7 +203,7 @@ def delete_user():
         refresh_token = get_jwt(refresh=True)
         if refresh_token:
             jti_refresh = refresh_token["jti"]
-            add_to_blocklist(jti_refresh)
+            current_app.blocklist.set(jti_refresh, "", ex=timedelta(minutes=30))
     except Exception:
         # Token might be expired, so skip blocklisting refresh token
         pass 
