@@ -140,24 +140,31 @@ def create_task(pid):
   status = data['status']
   connection = get_db_connection()
   if connection:
-    cursor = connection.cursor()
     try:
-      # Authorize that the current user matches the user listed as project owner
-      query_a = "SELECT * FROM projects WHERE id = %s AND owner = %s"
-      cursor.execute(query_a, (pid, username))
+      cursor = connection.cursor()
+       # Check if project exists
+      query_a = "SELECT * FROM projects WHERE id = %s"
+      cursor.execute(query_a, (pid,))
       project = cursor.fetchone()
-      if project:
-        query_b = "INSERT INTO tasks (pid, description, priority, status) VALUES (%s, %s, %s, %s)"
-        cursor.execute(query_b, (pid, description, priority, status))
-        # Commit changes
-        connection.commit()
-        response = jsonify({"message": "Task creation successful"})
-        # 201 Created: User added/created successfully
-        return response, 201
-      else:
-          # Return 403 Forbidden: Project exists (else the task would not exist), but
-          # does not belong to the current user
-          return jsonify({"error": "You do not have permission to access this project."}), 403
+      if not project:
+        # 404 Not Found: Project not found
+        return jsonify({"error": f"No project found with ID {pid}"}), 404
+      
+      # Check if existing project lists current user as owner
+      query_b = "SELECT * FROM projects WHERE id = %s AND owner = %s"
+      cursor.execute(query_b, (pid, username))
+      project = cursor.fetchone()
+      if not project:
+        # 403 Forbidden: Project exists, but does not belong to the user
+        return jsonify({"error": f"Project ID {pid} does not belong to user {username}"}), 403
+      
+      query_c = "INSERT INTO tasks (pid, description, priority, status) VALUES (%s, %s, %s, %s)"
+      cursor.execute(query_c, (pid, description, priority, status))
+      # Commit changes
+      connection.commit()
+      response = jsonify({"message": "Task creation successful"})
+      # 201 Created: User added/created successfully
+      return response, 201
     except IntegrityError as e:
       # 400 Bad Request: Task already exists
       return jsonify({"error": "Task already exists."}), 400
@@ -176,8 +183,8 @@ def update_task_status(id):
   status = data['status']
   connection = get_db_connection()
   if connection:
-    cursor = connection.cursor()
     try:
+      cursor = connection.cursor()
       # First, fetch task to acquire its project ID for authorization
       query_a = "SELECT * FROM tasks WHERE id = %s"
       cursor.execute(query_a, (id,))

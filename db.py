@@ -80,7 +80,7 @@ def create_projects_table():
                 languages JSON,
                 status INT DEFAULT 0,
                 date_created DATETIME,
-                FOREIGN KEY (owner) REFERENCES users(username)
+                FOREIGN KEY (owner) REFERENCES users(username) ON UPDATE CASCADE
             );
         """)
       # print("Created table 'projects.'")
@@ -143,13 +143,13 @@ def drop_tables():
       cursor.execute("DROP TABLE IF EXISTS tasks;")
       print("Finished dropping 'tasks' table (if existed).")
         
-      # Now, drop the 'projects' table
+      # Now, drop the 'projects' table second, as it has the foreign key constraint on 'users'
       cursor.execute("DROP TABLE IF EXISTS projects;")
       print("Finished dropping 'projects' table (if existed).")
         
       # Finally, drop the 'users' table
-      # cursor.execute("DROP TABLE IF EXISTS users;")
-      # print("Finished dropping 'users' table (if existed).")
+      cursor.execute("DROP TABLE IF EXISTS users;")
+      print("Finished dropping 'users' table (if existed).")
         
       # Commit the changes
       connection.commit()

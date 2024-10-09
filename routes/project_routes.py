@@ -17,9 +17,9 @@ project_bp = Blueprint('project_bp', __name__)
 def get_all_projects():
   connection = get_db_connection()
   if connection:
-    cursor = connection.cursor()
-    query = "SELECT * FROM projects"
     try:
+      cursor = connection.cursor()
+      query = "SELECT * FROM projects"
       cursor.execute(query)
       projects = cursor.fetchall()
       if projects:
@@ -58,8 +58,8 @@ def get_project(id):
   username = get_jwt_identity()
   connection = get_db_connection()
   if connection:
-    cursor = connection.cursor()
     try:
+      cursor = connection.cursor()
       query_a = "SELECT * FROM projects WHERE id = %s"
       cursor.execute(query_a, (id,))
       project = cursor.fetchone()
@@ -104,41 +104,41 @@ def get_project(id):
 def get_user_projects():
     username = get_jwt_identity()
     connection = get_db_connection()
-    if connection:
+    if connection: 
+      try:
         cursor = connection.cursor()
         # Structure query, retrieve user
         query = "SELECT * FROM projects WHERE owner = %s"
-        try:
-            cursor.execute(query, (username,))
-            projects = cursor.fetchall()
-            if projects:
-                projects_list = [
-                    {
-                        "id": project[0], 
-                        "owner": project[1], 
-                        "title": project[2],
-                        "summary": project[3],
-                        # Convert JSON strings to list format
-                        "steps": json.loads(project[4]),
-                        "languages": json.loads(project[5]),
-                        "status": project[6],
-                        "date_created": project[7]
-                    } 
-                    for project in projects
-                ]
-                # 200 OK: For a successful request that returns data
-                return jsonify(projects_list), 200
-            else:
-                # Return empty list and 200 OK: Request successful but
-                # no projects found
-                return jsonify([]), 200
-        except mysql.connector.Error as e:
-            # 500 Internal Server Error: Generic server-side failures
-            return jsonify({"error": str(e)}), 500
-        finally:
-            # Close resources
-            cursor.close()
-            connection.close()
+        cursor.execute(query, (username,))
+        projects = cursor.fetchall()
+        if projects:
+          projects_list = [
+            {
+              "id": project[0], 
+              "owner": project[1], 
+              "title": project[2],
+              "summary": project[3],
+              # Convert JSON strings to list format
+              "steps": json.loads(project[4]),
+              "languages": json.loads(project[5]),
+              "status": project[6],
+              "date_created": project[7]
+            } 
+            for project in projects
+          ]
+          # 200 OK: For a successful request that returns data
+          return jsonify(projects_list), 200
+        else:
+          # Return empty list and 200 OK: Request successful but
+          # no projects found
+          return jsonify([]), 200
+      except mysql.connector.Error as e:
+        # 500 Internal Server Error: Generic server-side failures
+        return jsonify({"error": str(e)}), 500
+      finally:
+        # Close resources
+        cursor.close()
+        connection.close()
     # 500 Internal Server Error: Generic server-side failures
     return jsonify({"error": "Failed to connect to database"}), 500 
   
@@ -155,8 +155,8 @@ def create_project():
   date_created = datetime.now()
   connection = get_db_connection()
   if connection:
-    cursor = connection.cursor()
     try:
+      cursor = connection.cursor()
       query_a = "SELECT * FROM users WHERE username = %s"
       cursor.execute(query_a, (username,))
       user = cursor.fetchone()
@@ -210,8 +210,8 @@ def update_project_status(id):
   username = get_jwt_identity()
   connection = get_db_connection()
   if connection:
-    cursor = connection.cursor()
     try:
+      cursor = connection.cursor()
       # Check if project exists
       query_a = "SELECT * FROM projects WHERE id = %s"
       cursor.execute(query_a, (id,))
@@ -264,8 +264,8 @@ def delete_project(id):
   username = get_jwt_identity()
   connection = get_db_connection()
   if connection:
-    cursor = connection.cursor()
     try:
+      cursor = connection.cursor()
       # Check if project exists
       query_a = "SELECT * FROM projects WHERE id = %s"
       cursor.execute(query_a, (id,))

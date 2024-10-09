@@ -39,8 +39,8 @@ def create_app():
     # Setup the Flask-JWT-Extended extension
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
     # Enable blocklisting; specify which tokens to check
-    app.config['JWT_BLACKLIST_ENABLED'] = True
-    app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
+    # app.config['JWT_BLACKLIST_ENABLED'] = True
+    # app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
     # Set JWT access token expiry
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=30)
     # Set JWT refresh token expiry
@@ -61,6 +61,8 @@ def create_app():
     # Explicitly set separate path for refresh tokens
     app.config['JWT_REFRESH_COOKIE_PATH'] = '/' 
     
+    # Create Redis client instance
+    #   decode_response=True -> tells Redis to return strings rather than bytes
     app.blocklist = redis.StrictRedis(
         host="localhost", port=6379, db=0, decode_responses=True
     )

@@ -39,10 +39,10 @@ def register_user():
   hashed_password = hash_password(password, bcrypt)
   connection = get_db_connection()
   if connection:
-    cursor = connection.cursor()
-    date_joined = datetime.now()
-    query = "INSERT INTO users (email, username, password, membership, date_joined) VALUES (%s, %s, %s, %s, %s)"
     try:
+      cursor = connection.cursor()
+      date_joined = datetime.now()
+      query = "INSERT INTO users (email, username, password, membership, date_joined) VALUES (%s, %s, %s, %s, %s)"
       cursor.execute(query, (email, username, hashed_password, "STANDARD", date_joined))
       # Commit changes
       connection.commit()
@@ -65,6 +65,7 @@ def register_user():
   return jsonify({"error": "Failed to connect to database"}), 500
 
 # LOGIN
+# TODO: add try-except-finally
 @auth_bp.route('/login', methods=['POST'])
 def login():
   data = request.get_json()
