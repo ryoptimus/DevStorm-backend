@@ -17,6 +17,9 @@ auth_bp = Blueprint('auth_bp', __name__)
 # Create blocklist
 blocklist = set()
 
+def add_to_blocklist(jti):
+  blocklist.add(jti)
+
 # REGISTER
 @auth_bp.route('/register', methods=['POST'])
 def register_user():

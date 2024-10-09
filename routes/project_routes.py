@@ -163,9 +163,9 @@ def create_project():
       if user[5] != user[6]:
         # 409 Conflict: User-side error in request
         return jsonify({"error": f"User {username} already has project in progress. User must complete existing project before creating a new one"}), 409
-      query_b = "INSERT INTO projects (owner, title, summary, steps, languages, status, date_created) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+      query_b = "INSERT INTO projects (owner, title, summary, steps, languages, date_created) VALUES (%s, %s, %s, %s, %s, %s)"
       # Convert 'steps' list to JSON string for storage
-      cursor.execute(query_b, (username, title, summary, json.dumps(steps), json.dumps(languages), 0, date_created))
+      cursor.execute(query_b, (username, title, summary, json.dumps(steps), json.dumps(languages), date_created))
       # Retrieve last inserted project ID (pid)
       pid = cursor.lastrowid
       # Commit changes

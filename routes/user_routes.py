@@ -4,8 +4,9 @@ import mysql.connector
 from flask import Blueprint, jsonify, request
 from app import bcrypt
 from db import get_db_connection
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt, verify_jwt_in_request, unset_jwt_cookies
 from helpers import hash_password, verify_password
+from auth_routes import add_to_blocklist
 
 user_bp = Blueprint('user_bp', __name__)
 
@@ -192,16 +193,61 @@ def update_username():
 @jwt_required()
 def delete_user():
     username = get_jwt_identity()
+    # Mimic logout. Get current access token's jti
+    jti = get_jwt()['jti']
+    add_to_blocklist(jti)
     connection = get_db_connection()
+    try:
+        # Try to verify the refresh token if present
+        verify_jwt_in_request(optional=True, refresh=True)
+        refresh_token = get_jwt(refresh=True)
+        if refresh_token:
+            jti_refresh = refresh_token["jti"]
+            add_to_blocklist(jti_refresh)
+    except Exception:
+        # Token might be expired, so skip blocklisting refresh token
+        pass 
+    
+    response = jsonify({"message": "User deleted successfully."})
+    unset_jwt_cookies(response)
+     
     if connection:
         try:
             cursor = connection.cursor()
-            query = "DELETE FROM users WHERE username = %s"
-            cursor.execute(query, (username,))
+            query_a = "SELECT * FROM users WHERE username = %s"
+            cursor.execute(query_a, (username,))
+            user = cursor.fetchone()
+            if not user:
+                # 404 Not Found: User not found
+                return jsonify({"error": "User not found"}), 404
+            user_project_count = user[5]
+            if user_project_count != 0:
+                query_b = "SELECT * FROM projects WHERE owner = %s"
+                cursor.execute(query_b, (username,))
+                projects = cursor.fetchall()
+                for project in projects:
+                    pid = project[0]
+                    project_completed = project[6]
+                    # Delete tasks first, as they are linked to project through pid 
+                    query_c = "DELETE FROM tasks where pid = %s"
+                    cursor.execute(query_c, (pid,))
+                    # Delete project
+                    query_d = "DELETE FROM projects WHERE id = %s"
+                    cursor.execute(query_d, (pid,))
+                    # Decrement user project count
+                    query_e = "UPDATE users SET projects = projects - 1 WHERE username = %s"
+                    cursor.execute(query_e, (username,))
+                    # If project is a completed project, decrement user project completion count
+                    if project_completed:
+                        query_f = "UPDATE users SET projects_completed = projects_completed - 1 WHERE username = %s"
+                        cursor.execute(query_f, (username,))
+            # Finally, delete user
+            query_g = "DELETE FROM users WHERE username = %s"
+            cursor.execute(query_g, (username,))
             # Commit changes
             connection.commit()
             # 200 OK: For a successful request
-            return jsonify({"message": "User deleted successfully."}), 200
+            return response, 200
         except mysql.connector.Error as e:
             # 500 Internal Server Error
             return jsonify({"error": f"Database error: {e}"}), 500

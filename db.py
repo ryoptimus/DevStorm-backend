@@ -83,7 +83,7 @@ def create_projects_table():
                 FOREIGN KEY (owner) REFERENCES users(username)
             );
         """)
-      print("Created table 'projects.'")
+      # print("Created table 'projects.'")
       
       # Commit changes
       connection.commit()
@@ -121,7 +121,7 @@ def create_tasks_table():
                 FOREIGN KEY (pid) REFERENCES projects(id)
             );
         """)
-      print("Created table 'tasks.'")
+      # print("Created table 'tasks.'")
       
       # Commit changes
       connection.commit()
