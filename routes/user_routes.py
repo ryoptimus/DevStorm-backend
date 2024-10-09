@@ -190,7 +190,7 @@ def update_username():
 # DELETE
 @user_bp.route('/user/delete', methods=['DELETE'])
 @jwt_required()
-def delete_record():
+def delete_user():
     username = get_jwt_identity()
     connection = get_db_connection()
     if connection:

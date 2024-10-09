@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, request
 from db import get_db_connection
 from mysql.connector import IntegrityError
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from datetime import datetime
 from helpers import engineer_taskgen_prompt
 from routes.ai_routes import prompt_ai_to_generate_tasks
 
@@ -25,13 +26,14 @@ def get_all_projects():
         projects_list = [
           {
             "id": project[0], 
-            "username": project[1], 
+            "owner": project[1], 
             "title": project[2],
             "summary": project[3],
             # Convert JSON strings to list format
             "steps": json.loads(project[4]),
             "languages": json.loads(project[5]),
-            "status": project[6]
+            "status": project[6],
+            "date_created": project[7]
           } 
           for project in projects
         ]
@@ -66,7 +68,7 @@ def get_project(id):
         return jsonify({"error": f"No project found with ID {id}"}), 404
       
       # Structure query, retrieve project
-      query_b = "SELECT * FROM projects WHERE id = %s AND username = %s"
+      query_b = "SELECT * FROM projects WHERE id = %s AND owner = %s"
       cursor.execute(query_b, (id, username))
       project = cursor.fetchone()
       if not project:
@@ -75,13 +77,14 @@ def get_project(id):
 
       project_data = {
         "id": project[0], 
-        "username": project[1], 
+        "owner": project[1], 
         "title": project[2],
         "summary": project[3],
         # Convert JSON strings to list format
         "steps": json.loads(project[4]),
         "languages": json.loads(project[5]),
-        "status": project[6]
+        "status": project[6],
+        "date_created": project[7]
       }
       # 200 OK: For a successful request that returns data
       return jsonify(project_data), 200
@@ -104,7 +107,7 @@ def get_user_projects():
     if connection:
         cursor = connection.cursor()
         # Structure query, retrieve user
-        query = "SELECT * FROM projects WHERE username = %s"
+        query = "SELECT * FROM projects WHERE owner = %s"
         try:
             cursor.execute(query, (username,))
             projects = cursor.fetchall()
@@ -112,13 +115,14 @@ def get_user_projects():
                 projects_list = [
                     {
                         "id": project[0], 
-                        "username": project[1], 
+                        "owner": project[1], 
                         "title": project[2],
                         "summary": project[3],
                         # Convert JSON strings to list format
                         "steps": json.loads(project[4]),
                         "languages": json.loads(project[5]),
-                        "status": project[6]
+                        "status": project[6],
+                        "date_created": project[7]
                     } 
                     for project in projects
                 ]
@@ -148,6 +152,7 @@ def create_project():
   summary = data['summary']
   steps = data['steps'] 
   languages = data['languages']
+  date_created = datetime.now()
   connection = get_db_connection()
   if connection:
     cursor = connection.cursor()
@@ -158,9 +163,9 @@ def create_project():
       if user[5] != user[6]:
         # 409 Conflict: User-side error in request
         return jsonify({"error": f"User {username} already has project in progress. User must complete existing project before creating a new one"}), 409
-      query_b = "INSERT INTO projects (username, title, summary, steps, languages, status) VALUES (%s, %s, %s, %s, %s, %s)"
+      query_b = "INSERT INTO projects (owner, title, summary, steps, languages, status, date_created) VALUES (%s, %s, %s, %s, %s, %s, %s)"
       # Convert 'steps' list to JSON string for storage
-      cursor.execute(query_b, (username, title, summary, json.dumps(steps), json.dumps(languages), 0))
+      cursor.execute(query_b, (username, title, summary, json.dumps(steps), json.dumps(languages), 0, date_created))
       # Retrieve last inserted project ID (pid)
       pid = cursor.lastrowid
       # Commit changes
@@ -216,7 +221,7 @@ def update_project_status(id):
         return jsonify({"error": f"No project found with ID {id}"}), 404
       
       # Check if existing project lists current user as owner
-      query_b = "SELECT * FROM projects WHERE id = %s AND username = %s"
+      query_b = "SELECT * FROM projects WHERE id = %s AND owner = %s"
       cursor.execute(query_b, (id, username))
       project = cursor.fetchone()
       if not project:
@@ -269,7 +274,7 @@ def delete_project(id):
         # 404 Not Found: Project not found
         return jsonify({"error": f"No project found with ID {id}"}), 404
       
-      query_b = "SELECT * FROM projects WHERE id = %s AND username = %s"
+      query_b = "SELECT * FROM projects WHERE id = %s AND owner = %s"
       cursor.execute(query_b, (id, username))
       project = cursor.fetchone()
       if not project:

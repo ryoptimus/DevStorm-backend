@@ -73,15 +73,17 @@ def create_projects_table():
       cursor.execute("""
           CREATE TABLE IF NOT EXISTS projects (
                 id INT AUTO_INCREMENT PRIMARY KEY, 
-                username VARCHAR(50), 
+                owner VARCHAR(50),
                 title VARCHAR(100),
                 summary VARCHAR(255),
                 steps JSON,
                 languages JSON,
-                status INT
+                status INT DEFAULT 0,
+                date_created DATETIME,
+                FOREIGN KEY (owner) REFERENCES users(username)
             );
         """)
-      # print("Created table 'projects.'")
+      print("Created table 'projects.'")
       
       # Commit changes
       connection.commit()
@@ -119,7 +121,7 @@ def create_tasks_table():
                 FOREIGN KEY (pid) REFERENCES projects(id)
             );
         """)
-      # print("Created table 'tasks.'")
+      print("Created table 'tasks.'")
       
       # Commit changes
       connection.commit()

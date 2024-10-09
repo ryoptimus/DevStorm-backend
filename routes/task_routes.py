@@ -58,7 +58,7 @@ def get_task(id):
       task = cursor.fetchone()
       if task:
         # Authorize that the current user matches the user listed as project owner
-        query_b = "SELECT * FROM projects WHERE id = %s AND username = %s"
+        query_b = "SELECT * FROM projects WHERE id = %s AND owner = %s"
         cursor.execute(query_b, (task[1], username))
         project = cursor.fetchone()
         if project:
@@ -103,7 +103,7 @@ def get_project_tasks(pid):
     if tasks:
       task = tasks[0]
       # Authorize that the current user matches the user listed as project owner
-      query_b = "SELECT * FROM projects WHERE id = %s AND username = %s"
+      query_b = "SELECT * FROM projects WHERE id = %s AND owner = %s"
       cursor.execute(query_b, (task[1], username))
       project = cursor.fetchone()
       if project:
@@ -143,7 +143,7 @@ def create_task(pid):
     cursor = connection.cursor()
     try:
       # Authorize that the current user matches the user listed as project owner
-      query_a = "SELECT * FROM projects WHERE id = %s AND username = %s"
+      query_a = "SELECT * FROM projects WHERE id = %s AND owner = %s"
       cursor.execute(query_a, (pid, username))
       project = cursor.fetchone()
       if project:
@@ -184,7 +184,7 @@ def update_task_status(id):
       task = cursor.fetchone()
       if task:
         # Authorize that the current user matches the user listed as project owner
-        query_b = "SELECT * FROM projects WHERE id = %s AND username = %s"
+        query_b = "SELECT * FROM projects WHERE id = %s AND owner = %s"
         cursor.execute(query_b, (task[1], username))
         project = cursor.fetchone()
         if project:
@@ -227,7 +227,7 @@ def update_task_description(id):
       task = cursor.fetchone()
       if task:
         # Authorize that the current user matches the user listed as project owner
-        query_b = "SELECT * FROM projects WHERE id = %s AND username = %s"
+        query_b = "SELECT * FROM projects WHERE id = %s AND owner = %s"
         cursor.execute(query_b, (task[1], username))
         project = cursor.fetchone()
         if project:
@@ -270,7 +270,7 @@ def delete_task(id):
       task = cursor.fetchone()
       if task:
         # Authorize that the current user matches the user listed as project owner
-        query_b = "SELECT * FROM projects WHERE id = %s AND username = %s"
+        query_b = "SELECT * FROM projects WHERE id = %s AND owner = %s"
         cursor.execute(query_b, (task[1], username))
         project = cursor.fetchone()
         if project:
