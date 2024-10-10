@@ -78,20 +78,18 @@ def register_user():
   return jsonify({"error": "Failed to connect to database"}), 500
 
 @auth_bp.route('/confirm/<token>', methods=['GET'])
-@jwt_required
 def confirm_email(token):
   try:
     email = confirm_token(token)
   except:
     # 400 Bad Request
     return jsonify({"error": "The confirmation link is invalid or has expired"}), 400
-  username = get_jwt_identity()
   connection = get_db_connection()
   if connection:
     try:
       cursor = connection.cursor()
-      query_a = "SELECT * FROM users WHERE username = %s AND email = %s"
-      cursor.execute(query_a, (username, email))
+      query_a = "SELECT * FROM users WHERE email = %s"
+      cursor.execute(query_a, (email,))
       user = cursor.fetchone()
       if not user:
         # 404 Not Found: User not found
@@ -100,10 +98,10 @@ def confirm_email(token):
       if user_confirmed:
         return jsonify({"message": "Account already confirmed. Please login"}), 200
       else:
-        query_b = "UPDATE users SET confirmed = 1 WHERE username = %s AND email = %s"
-        cursor.execute(query_b, (username, email))
-        query_c = "UPDATE users SET confirmed_on = %s WHERE username = %s AND email = %s"
-        cursor.execute(query_c, (datetime.now(), username, email))
+        query_b = "UPDATE users SET confirmed = 1 WHERE email = %s"
+        cursor.execute(query_b, (email,))
+        query_c = "UPDATE users SET confirmed_on = %s WHERE email = %s"
+        cursor.execute(query_c, (datetime.now(), email))
         connection.commit()
         return jsonify({"message": "You have successfully confirmed your account"}), 200
     except mysql.connector.Error as e:
