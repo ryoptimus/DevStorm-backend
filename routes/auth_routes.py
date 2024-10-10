@@ -1,7 +1,7 @@
 # auth_routes.py
 
 import mysql.connector
-from flask import Blueprint, jsonify, request, current_app, url_for, render_template
+from flask import Blueprint, jsonify, request, current_app, render_template
 from flask_jwt_extended import (
     create_access_token, create_refresh_token,
     jwt_required, get_jwt, get_jwt_identity, set_access_cookies, set_refresh_cookies,
@@ -77,7 +77,7 @@ def register_user():
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
 
-@auth_bp.route('/confirm/<token>', methods=['GET'], endpoint='confirm_email')
+@auth_bp.route('/confirm/<token>', methods=['GET'])
 @jwt_required
 def confirm_email(token):
   try:

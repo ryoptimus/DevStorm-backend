@@ -37,6 +37,7 @@ def create_app():
         r'/project/*': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
         r'/task': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
         r'/task/*': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
+        r'/confirm/*': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
         r'/get_csrf_tokens': {'origins': os.getenv("FRONTEND")}
     }, supports_credentials=True)
     
