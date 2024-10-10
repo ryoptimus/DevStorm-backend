@@ -121,13 +121,9 @@ def token_in_blocklist(jwt_header, jwt_payload: dict):
 def refresh():
   # Check for valid refresh token
   identity = get_jwt_identity()
-  # Get token's unique identifier (jti)
-  jti = get_jwt()['jti']
-  # Add token's jti to blocklist
-  add_to_blocklist(jti)
   # Create new access token
   new_access_token = create_access_token(identity=identity, fresh=True)
-  response = jsonify({"message": "Access token refreshed"})
+  response = jsonify({"message": "Access token refreshed", "new_access token": new_access_token})
   # Store token in cookie
   set_access_cookies(response, new_access_token)
   # 200 OK: For a successful request that returns data
