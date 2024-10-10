@@ -162,7 +162,17 @@ def create_task(pid):
       cursor.execute(query_c, (pid, description, priority, status))
       # Commit changes
       connection.commit()
-      response = jsonify({"message": "Task creation successful"})
+      task_id = cursor.lastrowid
+      response = jsonify({
+        "message": "Task creation successful",
+        "task": {
+          "id": task_id,
+          "pid": pid,
+          "description": description,
+          "priority": priority,
+          "status": status
+          }
+        })
       # 201 Created: User added/created successfully
       return response, 201
     except IntegrityError as e:
