@@ -65,9 +65,6 @@ def register_user():
                           "confirm_url": confirm_url})
       set_access_cookies(response, access_token)
       set_refresh_cookies(response, refresh_token)
-      # Check if cookies are in the response headers
-      for header in response.headers:
-        print(header)
       # 201 Created: User added/created successfully
       return response, 201
     except IntegrityError as e:
