@@ -19,7 +19,9 @@ app.register_blueprint(ai_bp)
 app.register_blueprint(project_bp)
 app.register_blueprint(task_bp)
 
-# drop_tables()
+# print(app.url_map)
+
+drop_tables()
 create_users_table()
 create_projects_table()
 create_tasks_table()

@@ -51,12 +51,17 @@ def register_user():
       connection.commit()
       
       confirmation_token = generate_confirmation_token(email)
-      confirmation_url = url_for('auth_routs.confirm_email', token=confirmation_token, _external=True)
+      confirm_url = url_for('auth_bp.confirm_email', token=confirmation_token, _external=True)
+      html = render_template('user/activate.html', confirm_url=confirm_url)
+      subject = "Please confirm your email"
+      send_email(email, subject, html)
       
-      # Generate access token for new user
+      # Simulate login
+      # Generate access and refresh tokens for new user, set cookies
       access_token = create_access_token(identity=username, fresh=True)
       refresh_token = create_refresh_token(identity=username)
-      response = jsonify({"message": "Registration successful, you are now logged in"})
+      response = jsonify({"message": "Registration successful, you are now logged in. A confirmation email has been sent to your email",
+                          "confirm_url": confirm_url})
       set_access_cookies(response, access_token)
       set_refresh_cookies(response, refresh_token)
       # 201 Created: User added/created successfully
@@ -71,7 +76,7 @@ def register_user():
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
 
-@auth_bp.route('/confirm/<token>', methods=['GET'])
+@auth_bp.route('/confirm/<token>', methods=['GET'], endpoint='confirm_email')
 @jwt_required
 def confirm_email(token):
   try:
