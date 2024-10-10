@@ -21,7 +21,7 @@ app.register_blueprint(task_bp)
 
 # print(app.url_map)
 
-drop_tables()
+# drop_tables()
 create_users_table()
 create_projects_table()
 create_tasks_table()
