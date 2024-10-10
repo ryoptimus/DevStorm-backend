@@ -38,6 +38,8 @@ def create_users_table():
                 email VARCHAR(320) UNIQUE,
                 username VARCHAR(50) UNIQUE, 
                 password VARCHAR(60),
+                confirmed INT DEFAULT 0,
+                confirmed_on DATETIME,
                 membership VARCHAR(8),
                 projects INT DEFAULT 0,
                 projects_completed INT DEFAULT 0,

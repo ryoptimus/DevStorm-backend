@@ -27,10 +27,12 @@ def get_all_users():
                 "email": user[1],
                 "username": user[2], 
                 "password": user[3],
-                "membership": user[4],
-                "projects": user[5],
-                "projects_completed": user[6],
-                "date_joined": user[7]
+                "confirmed": user[4],
+                "confirmed_on": user[5],
+                "membership": user[6],
+                "projects": user[7],
+                "projects_completed": user[8],
+                "date_joined": user[9]
             } 
             for user in users
             ]
@@ -65,13 +67,15 @@ def get_user():
             if user:
                 user_data = {
                     "id": user[0], 
-                    "email": user[1], 
-                    "username": user[2],
+                    "email": user[1],
+                    "username": user[2], 
                     "password": user[3],
-                    "membership": user[4],
-                    "projects": user[5],
-                    "projects_completed": user[6],
-                    "date_joined": user[7]
+                    "confirmed": user[4],
+                    "confirmed_on": user[5],
+                    "membership": user[6],
+                    "projects": user[7],
+                    "projects_completed": user[8],
+                    "date_joined": user[9]
                 }
                 # 200 OK: For a successful request that returns data
                 return jsonify(user_data), 200
@@ -250,6 +254,7 @@ def delete_user():
             # 200 OK: For a successful request
             return response, 200
         except mysql.connector.Error as e:
+            connection.rollback()
             # 500 Internal Server Error
             return jsonify({"error": f"Database error: {e}"}), 500
         finally:

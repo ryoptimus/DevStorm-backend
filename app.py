@@ -5,6 +5,7 @@ from flask import Flask
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_bcrypt import Bcrypt
+from flask_mail import Mail
 from datetime import timedelta
 from dotenv import load_dotenv
 
@@ -16,6 +17,9 @@ bcrypt = Bcrypt()
 
 # Initialize JWTManager
 jwt = JWTManager()
+
+# Create mail object
+mail = Mail()
 
 def create_app():
     app = Flask(__name__)
@@ -35,6 +39,19 @@ def create_app():
         r'/task/*': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
         r'/get_csrf_tokens': {'origins': os.getenv("FRONTEND")}
     }, supports_credentials=True)
+    
+    # Add itsdangerous secret key and password salt from .env variables
+    app.config['ITSDANGEROUS_SECRET_KEY'] = os.getenv("ITSDANGEROUS_SECRET_KEY")
+    app.config['ITSDANGEROUS_PASSWORD_SALT'] = os.getenv("ITSDANGEROUS_PASSWORD_SALT")
+    
+    # Set up flask mail
+    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+    app.config['MAIL_PORT'] = 587
+    app.config['MAIL_USE_TLS'] = True
+    app.config['MAIL_USE_SSL'] = False
+    app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME")
+    app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD")
+    app.config['MAIL_DEFAULT_SENDER'] = os.getenv("MAIL_USERNAME")
     
     # Setup the Flask-JWT-Extended extension
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
@@ -67,8 +84,10 @@ def create_app():
         host="localhost", port=6379, db=0, decode_responses=True
     )
     
-    #Initialize JWT with the app
+    # Initialize JWT with the app
     jwt.init_app(app)
-    # Create bcrypt object
+    # Initialize bcrypt with the app
     bcrypt.init_app(app)
+    # Initialize Flask-Mail with the app
+    mail.init_app(app)
     return app, jwt, bcrypt

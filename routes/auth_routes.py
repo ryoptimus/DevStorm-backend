@@ -1,6 +1,7 @@
 # auth_routes.py
 
-from flask import Blueprint, jsonify, request, current_app
+import mysql.connector
+from flask import Blueprint, jsonify, request, current_app, url_for, render_template
 from flask_jwt_extended import (
     create_access_token, create_refresh_token,
     jwt_required, get_jwt, get_jwt_identity, set_access_cookies, set_refresh_cookies,
@@ -10,7 +11,9 @@ from mysql.connector import IntegrityError
 from datetime import datetime, timedelta
 from app import bcrypt, jwt
 from db import get_db_connection
-from helpers import hash_password, verify_password
+from helpers import (
+  hash_password, verify_password, generate_confirmation_token, confirm_token, send_email
+)
 
 auth_bp = Blueprint('auth_bp', __name__)
 
@@ -46,6 +49,10 @@ def register_user():
       cursor.execute(query, (email, username, hashed_password, "STANDARD", date_joined))
       # Commit changes
       connection.commit()
+      
+      confirmation_token = generate_confirmation_token(email)
+      confirmation_url = url_for('auth_routs.confirm_email', token=confirmation_token, _external=True)
+      
       # Generate access token for new user
       access_token = create_access_token(identity=username, fresh=True)
       refresh_token = create_refresh_token(identity=username)
@@ -63,6 +70,47 @@ def register_user():
       connection.close()
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
+
+@auth_bp.route('/confirm/<token>', methods=['GET'])
+@jwt_required
+def confirm_email(token):
+  try:
+    email = confirm_token(token)
+  except:
+    # 400 Bad Request
+    return jsonify({"error": "The confirmation link is invalid or has expired"}), 400
+  username = get_jwt_identity()
+  connection = get_db_connection()
+  if connection:
+    try:
+      cursor = connection.cursor()
+      query_a = "SELECT * FROM users WHERE username = %s AND email = %s"
+      cursor.execute(query_a, (username, email))
+      user = cursor.fetchone()
+      if not user:
+        # 404 Not Found: User not found
+        return jsonify({"error": "User not found"}), 404
+      user_confirmed = user[4]
+      if user_confirmed:
+        return jsonify({"message": "Account already confirmed. Please login"}), 200
+      else:
+        query_b = "UPDATE users SET confirmed = 1 WHERE username = %s AND email = %s"
+        cursor.execute(query_b, (username, email))
+        query_c = "UPDATE users SET confirmed_on = %s WHERE username = %s AND email = %s"
+        cursor.execute(query_c, (datetime.now(), username, email))
+        connection.commit()
+        return jsonify({"message": "You have successfully confirmed your account"}), 200
+    except mysql.connector.Error as e:
+      connection.rollback()
+      # 500 Internal Server Error
+      return jsonify({"error": f"Database error: {e}"}), 500
+    finally:
+         # Close resources
+        cursor.close()
+        connection.close()
+  # 500 Internal Server Error: Generic server-side failures
+  return jsonify({"error": "Failed to connect to database"}), 500
+  
 
 # LOGIN
 # TODO: add try-except-finally

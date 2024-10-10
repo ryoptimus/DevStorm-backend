@@ -1,7 +1,10 @@
 # helpers.py
 
+from flask import current_app
 from pydantic import BaseModel
 from typing import List
+from itsdangerous import URLSafeTimedSerializer
+from flask_mail import Message
 
 # PROMPT_AI helper: data model for project idea generation
 class ProjectIdea(BaseModel):
@@ -61,3 +64,29 @@ def hash_password(password: str, bcrypt):
 def verify_password(plain_password, hashed_password, bcrypt) -> bool:
     # Verify the hashed password
     return bcrypt.check_password_hash(hashed_password, plain_password)
+  
+def generate_confirmation_token(email):
+  serializer = URLSafeTimedSerializer(current_app.config['ITSDANGEROUS_SECRET_KEY'])
+  return serializer.dumps(email, salt=current_app.config['ITSDANGEROUS_PASSWORD_SALT'])
+
+def confirm_token(token, expiration=3600):
+  serializer = URLSafeTimedSerializer(current_app.config['ITSDANGEROUS_SECRET_KEY'])
+  try:
+    email = serializer.loads(
+      token,
+      salt=current_app.config['ITSDANGEROUS_PASSWORD_SALT'],
+      max_age=expiration
+    )
+  except:
+    return False
+  return email
+
+def send_email(to, subject, template):
+  mail = current_app.extensions['mail']
+  message = Message(
+    subject,
+    recipients=[to],
+    html=template,
+    sender=current_app.config['MAIL_DEFAULT_SENDER']
+  )
+  mail.send(message)
