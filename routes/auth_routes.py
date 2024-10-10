@@ -52,8 +52,8 @@ def register_user():
       
       confirmation_token = generate_confirmation_token(email)
       confirm_url = url_for('auth_bp.confirm_email', token=confirmation_token, _external=True)
-      html = render_template('user/activate.html', confirm_url=confirm_url)
-      subject = "Please confirm your email"
+      html = render_template('user/activate.html', username=username, confirm_url=confirm_url)
+      subject = "Please verify your DevStorm account"
       send_email(email, subject, html)
       
       # Simulate login
