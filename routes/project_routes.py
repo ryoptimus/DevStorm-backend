@@ -160,7 +160,7 @@ def create_project():
       query_a = "SELECT * FROM users WHERE username = %s"
       cursor.execute(query_a, (username,))
       user = cursor.fetchone()
-      if user[5] != user[6]:
+      if user[7] != user[8]:
         # 409 Conflict: User-side error in request
         return jsonify({"error": f"User {username} already has project in progress. User must complete existing project before creating a new one"}), 409
       query_b = "INSERT INTO projects (owner, title, summary, steps, languages, date_created) VALUES (%s, %s, %s, %s, %s, %s)"
