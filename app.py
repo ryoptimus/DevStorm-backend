@@ -32,7 +32,7 @@ def create_app():
         r'/api/prompt': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
         r'/login': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
         r'/logout': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-        r'/token/refresh': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
+        r'/token/*': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
         r'/project': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
         r'/project/*': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
         r'/task': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
