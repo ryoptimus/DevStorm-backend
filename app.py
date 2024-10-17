@@ -26,18 +26,18 @@ def create_app():
 
     # Configure CORS
     CORS(app, resources={
-        r'/user': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-        r'/user/*': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-        r'/register': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-        r'/api/prompt': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-        r'/login': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-        r'/logout': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-        r'/token/*': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-        r'/project': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-        r'/project/*': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-        r'/task': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-        r'/task/*': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
-        r'/confirm/*': {'origins': [os.getenv("FRONTEND"), "http://127.0.0.1:3000"]},
+        r'/user': {'origins': os.getenv("FRONTEND")},
+        r'/user/*': {'origins': os.getenv("FRONTEND")},
+        r'/register': {'origins': os.getenv("FRONTEND")},
+        r'/api/prompt': {'origins': os.getenv("FRONTEND")},
+        r'/login': {'origins': os.getenv("FRONTEND")},
+        r'/logout': {'origins': os.getenv("FRONTEND")},
+        r'/token/*': {'origins': os.getenv("FRONTEND")},
+        r'/project': {'origins': os.getenv("FRONTEND")},
+        r'/project/*': {'origins': os.getenv("FRONTEND")},
+        r'/task': {'origins': os.getenv("FRONTEND")},
+        r'/task/*': {'origins': os.getenv("FRONTEND")},
+        r'/confirm/*': {'origins': os.getenv("FRONTEND")},
         r'/get_csrf_tokens': {'origins': os.getenv("FRONTEND")}
     }, supports_credentials=True)
     

@@ -1,15 +1,45 @@
-<p style="color: #000000; font-size: 13px; font-family: Arial, sans-serif;">
-    Welcome, {{username}}!
-</p>
-<p style="color: #000000; font-size: 13px; font-family: Arial, sans-serif;">
-    Thanks for signing up for DevStorm. Just follow this link to activate your account and start building:
-</p>
-<p>
-     <a href="{{ confirm_url }}" 
-            style="display: inline-block; padding: 8px 25px; background-color: #1f798f; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
-            Activate Your Account
-    </a>
-</p>
-<p style="color: #000000; font-size: 13px; font-family: Arial, sans-serif;">
-    Cheers!
-</p>
+<html>
+<head>
+<style>
+  .outerbox {
+  width: 600px;
+  background-color: #aabbc2;
+  padding: 20px 40px;
+  margin: 0 auto;
+  }
+  
+.innerbox {
+  border-radius: 3px;
+  width: 400px;
+  background-color: white;
+  padding: 20px;
+  text-align: center;
+  margin: 0 auto;
+}
+  
+.left-align {
+  text-align: left;
+}
+</style>
+</head>
+<body>
+
+<div class="outerbox">
+	<div class="innerbox">
+  		<p style="color: #000000; font-size: 15px; font-family: Arial, sans-serif;">
+    		<strong>Welcome, {{username}}!</strong>
+		</p>
+		<p class="left-align" style="color: #000000; font-size: 13px; font-family: Arial, sans-serif;">
+    		Thanks for signing up for DevStorm. Just follow this link to activate your account and start building:
+		</p>
+		<p>
+     		<a href="{{ confirm_url }}" 
+            	style="display: inline-block; padding: 8px 25px; background-color: #1f798f; color: white; text-decoration: none; border-radius: 3px; font-weight: bold; width: 140px;">
+            		Activate Your Account
+    		</a>
+		</p>
+	</div>
+</div>
+
+</body>
+</html>
