@@ -61,7 +61,7 @@ def register_user():
       # Generate access and refresh tokens for new user, set cookies
       access_token = create_access_token(identity=username, fresh=True)
       refresh_token = create_refresh_token(identity=username)
-      response = jsonify({"message": "Registration successful, you are now logged in. A confirmation email has been sent to your email",
+      response = jsonify({"message": "Registration successful. Confirmation email sent",
                           "confirm_url": confirm_url})
       set_access_cookies(response, access_token)
       set_refresh_cookies(response, refresh_token)
@@ -69,7 +69,7 @@ def register_user():
       return response, 201
     except IntegrityError as e:
       # 400 Bad Request: Username already exists
-      return jsonify({"error": "Username already exists."}), 400
+      return jsonify({"error": "Username or password already exists."}), 400
     finally:
       # Close resources
       cursor.close()

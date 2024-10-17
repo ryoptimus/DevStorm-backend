@@ -203,7 +203,6 @@ def create_project():
 
 # UPDATE
 # Toggle status of a given project
-# TODO: Add check that this is indeed a project in username's username
 @project_bp.route('/project/<int:id>/update-status', methods=['PUT'])
 @jwt_required()
 def update_project_status(id):
