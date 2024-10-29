@@ -1,7 +1,7 @@
 # db.py
 import os
 import mysql.connector
-from mysql.connector import IntegrityError
+from mysql.connector import Error
 
 # Connect to database
 def get_db_connection():
@@ -14,9 +14,17 @@ def get_db_connection():
       database=os.getenv("DB_NAME")
     )
     return connection
-  except mysql.connector.Error as e:
-    print(f"error: {e}")
-    return None
+  except mysql.connector.InterfaceError as e:
+    print(f"Interface error: {e}")
+  except mysql.connector.ProgrammingError as e:
+    print(f"Programming error: {e}")
+  except mysql.connector.DatabaseError as e:
+    print(f"Database error: {e}")
+  except Error as e:
+    print(f"MySQL error: {e}")
+  except Exception as e:
+    print(f"Unexpected error: {e}")
+  return None
 
 # Generate table to store user information
 def create_users_table():
