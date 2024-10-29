@@ -126,14 +126,18 @@ def login():
     
   connection = get_db_connection()
   if connection:
-    cursor = connection.cursor()
-    # Structure query, retrieve user
-    query = "SELECT * FROM users WHERE username = %s"
-    cursor.execute(query, (username,))
-    user = cursor.fetchone()
-    # Close resources
-    cursor.close()
-    connection.close()
+    try:
+      cursor = connection.cursor()
+      # Structure query, retrieve user
+      query = "SELECT * FROM users WHERE username = %s"
+      cursor.execute(query, (username,))
+      user = cursor.fetchone()
+    except mysql.connector.Error as e:
+      return jsonify({"error": f"Database error: {e}"}), 500
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
     
     # Check if user is found
     if user:
