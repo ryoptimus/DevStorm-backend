@@ -83,14 +83,16 @@ def create_projects_table():
       cursor.execute("""
           CREATE TABLE IF NOT EXISTS projects (
                 id INT AUTO_INCREMENT PRIMARY KEY, 
-                owner VARCHAR(50),
+                owner VARCHAR(100),
+                collaborator VARCHAR(100) DEFAULT NULL,
                 title VARCHAR(100),
                 summary VARCHAR(255),
                 steps JSON,
                 languages JSON,
                 status INT DEFAULT 0,
                 date_created DATETIME,
-                FOREIGN KEY (owner) REFERENCES users(username) ON UPDATE CASCADE
+                FOREIGN KEY (owner) REFERENCES users(username) ON UPDATE CASCADE,
+                FOREIGN KEY (collaborator) REFERENCES users(username) ON UPDATE CASCADE
             );
         """)
       # print("Created table 'projects.'")
@@ -158,8 +160,8 @@ def drop_tables():
       print("Finished dropping 'projects' table (if existed).")
         
       # Finally, drop the 'users' table
-      cursor.execute("DROP TABLE IF EXISTS users;")
-      print("Finished dropping 'users' table (if existed).")
+      # cursor.execute("DROP TABLE IF EXISTS users;")
+      # print("Finished dropping 'users' table (if existed).")
         
       # Commit the changes
       connection.commit()
