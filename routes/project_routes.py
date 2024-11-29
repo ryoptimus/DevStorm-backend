@@ -204,33 +204,140 @@ def create_project():
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
 
-# # UPDATE
-# # Add a collaborator
-# @project_bp.route('/project/<int:id>/add-collaborator', methods=['PUT'])
-# @jwt_required()
-# def add_project_collaborator(id):
-#   username = get_jwt_identity()
-#   connection = get_db_connection()
-#   if connection:
-#     try:
-#       cursor = connection.cursor()
-#       # Check if project exists
-#       query_a = "SELECT * FROM projects WHERE id = %s"
-#       cursor.execute(query_a, (id,))
-#       project = cursor.fetchone()
-#       if not project:
-#         # 404 Not Found: Project not found
-#         return jsonify({"error": f"No project found with ID {id}"}), 404
+# UPDATE
+# Add a collaborator
+@project_bp.route('/project/<int:id>/add-collaborator', methods=['PUT'])
+@jwt_required()
+def add_project_collaborator(id):
+  data = request.get_json()
+  username = get_jwt_identity()
+  new_collaborator = data['collaborator']
+  connection = get_db_connection()
+  if connection:
+    try:
+      cursor = connection.cursor()
+      # Check if project exists
+      query_a = "SELECT * FROM projects WHERE id = %s"
+      cursor.execute(query_a, (id,))
+      project = cursor.fetchone()
+      if not project:
+        # 404 Not Found: Project not found
+        return jsonify({"error": f"No project found with ID {id}"}), 404
       
-#       # Check if existing project lists current user as owner
-#       query_b = "SELECT * FROM projects WHERE id = %s AND owner = %s"
-#       cursor.execute(query_b, (id, username))
-#       project = cursor.fetchone()
-#       if not project:
-#         # 403 Forbidden: Project exists, but does not belong to the user
-#         return jsonify({"error": f"Project ID {id} does not belong to user {username}"}), 403
+      # Check if existing project lists current user as owner
+      query_b = "SELECT * FROM projects WHERE id = %s AND owner = %s"
+      cursor.execute(query_b, (id, username))
+      project = cursor.fetchone()
+      if not project:
+        # 403 Forbidden: Project exists, but does not belong to the user
+        return jsonify({"error": f"Project ID {id} does not belong to user {username}"}), 403
       
+      collaborator = project[2]
+      if collaborator is not None:
+        # 400 Bad Request: Project already has a collaborator
+        return jsonify({"error": f"Project already has a collaborator."}), 400
       
+      # Update project status
+      query_c = "UPDATE projects SET collaborator = %s WHERE id = %s"
+      cursor.execute(query_c, (new_collaborator, id))
+      
+      connection.commit()
+      # 200 OK: For a successful request
+      return jsonify({"message": "Project collaborator updated successfully"}), 200
+    except IntegrityError as e:
+      # 403 Forbidden: Proposed collaborator does not exist
+      return jsonify({"error": f"The user {new_collaborator} does not exist."}), 403
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
+  # 500 Internal Server Error: Generic server-side failures
+  return jsonify({"error": "Failed to connect to database"}), 500
+
+# UPDATE COLLABORATOR
+@project_bp.route('/project/<int:id>/update-collaborator', methods=['PUT'])
+@jwt_required()
+def update_project_collaborator(id):
+  data = request.get_json()
+  username = get_jwt_identity()
+  new_collaborator = data['collaborator']
+  connection = get_db_connection()
+  if connection:
+    try:
+      cursor = connection.cursor()
+      # Check if project exists
+      query_a = "SELECT * FROM projects WHERE id = %s"
+      cursor.execute(query_a, (id,))
+      project = cursor.fetchone()
+      if not project:
+        # 404 Not Found: Project not found
+        return jsonify({"error": f"No project found with ID {id}"}), 404
+      
+      # Check if existing project lists current user as owner
+      query_b = "SELECT * FROM projects WHERE id = %s AND owner = %s"
+      cursor.execute(query_b, (id, username))
+      project = cursor.fetchone()
+      if not project:
+        # 403 Forbidden: Project exists, but does not belong to the user
+        return jsonify({"error": f"Project ID {id} does not belong to user {username}"}), 403
+      
+            # Update project status
+      query_c = "UPDATE projects SET collaborator = %s WHERE id = %s"
+      cursor.execute(query_c, (new_collaborator, id))
+      
+      connection.commit()
+      # 200 OK: For a successful request
+      return jsonify({"message": "Project collaborator updated successfully"}), 200
+    except IntegrityError as e:
+      # 403 Forbidden: Proposed collaborator does not exist
+      return jsonify({"error": f"The user {new_collaborator} does not exist."}), 403
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
+  # 500 Internal Server Error: Generic server-side failures
+  return jsonify({"error": "Failed to connect to database"}), 500
+
+# UPDATE
+@project_bp.route('/project/<int:id>/remove-collaborator', methods=['PUT'])
+@jwt_required()
+def remove_project_collaborator(id):
+  username = get_jwt_identity()
+  connection = get_db_connection()
+  if connection:
+    try:
+      cursor = connection.cursor()
+      # Check if project exists
+      query_a = "SELECT * FROM projects WHERE id = %s"
+      cursor.execute(query_a, (id,))
+      project = cursor.fetchone()
+      if not project:
+        # 404 Not Found: Project not found
+        return jsonify({"error": f"No project found with ID {id}"}), 404
+      
+      query_b = "SELECT * FROM projects WHERE id = %s AND owner = %s"
+      cursor.execute(query_b, (id, username))
+      project = cursor.fetchone()
+      if not project:
+        # 403 Forbidden: Project exists, but does not belong to the user
+        return jsonify({"error": f"Project ID {id} does not belong to user {username}"}), 403
+      
+      query_c = "UPDATE projects SET collaborator = %s WHERE id = %s"
+      cursor.execute(query_c, (None, id))
+      
+      connection.commit()
+      # 200 OK: For a successful request
+      return jsonify({"message": "Project collaborator updated successfully"}), 200
+    except mysql.connector.Error as e:
+      # 500 Internal Server Error
+      return jsonify({"error": f"Database error: {e}"}), 500
+    finally:
+      # Close resources
+      cursor.close()
+      connection.close()
+  # 500 Internal Server Error: Generic server-side failures
+  return jsonify({"error": "Failed to connect to database"}), 500
+  
 
 # UPDATE
 # Toggle status of a given project
