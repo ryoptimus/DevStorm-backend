@@ -10,7 +10,7 @@ from datetime import timedelta
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv()
+load_dotenv() 
 
 # Create bcrypt object
 bcrypt = Bcrypt()
@@ -21,7 +21,7 @@ jwt = JWTManager()
 # Create mail object
 mail = Mail()
 
-def create_app():
+def create_app():  
     app = Flask(__name__)
 
     # Configure CORS

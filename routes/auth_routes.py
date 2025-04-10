@@ -17,6 +17,7 @@ from helpers import (
 
 auth_bp = Blueprint('auth_bp', __name__)
 
+# add jti (JWT ID; unique identifier) to blocklist
 def add_to_blocklist(jti):
   current_app.blocklist.set(jti, "", ex=timedelta(minutes=30))
   
@@ -114,10 +115,12 @@ def confirm_email(token):
         connection.close()
   # 500 Internal Server Error: Generic server-side failures
   return jsonify({"error": "Failed to connect to database"}), 500
-  
+
+# TODO: another confirmation email-esque feature for "Forgot password?" option on front page
 
 # LOGIN
 # TODO: add try-except-finally
+# TODO: add login with email capability
 @auth_bp.route('/login', methods=['POST'])
 def login():
   data = request.get_json()
@@ -166,7 +169,6 @@ def login():
 
 @jwt.token_in_blocklist_loader
 def token_in_blocklist(jwt_header, jwt_payload: dict):
-  # print_blocklist()
   # Get token's unique identifier (jti)
   jti = jwt_payload['jti']
   token_in_redis = current_app.blocklist.get(jti)
