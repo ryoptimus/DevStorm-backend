@@ -5,8 +5,13 @@ from flask import Blueprint, jsonify, request, current_app
 from app import bcrypt
 from datetime import timedelta
 from db import get_db_connection
-from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt, verify_jwt_in_request, unset_jwt_cookies
+from flask_jwt_extended import (
+    jwt_required, get_jwt_identity, get_jwt, verify_jwt_in_request, 
+    unset_jwt_cookies, set_access_cookies, set_refresh_cookies, 
+    create_access_token, create_refresh_token
+)
 from helpers import hash_password, verify_password
+from routes.auth_routes import add_to_blocklist
 
 user_bp = Blueprint('user_bp', __name__)
 
@@ -56,6 +61,7 @@ def get_all_users():
 @jwt_required()
 def get_user():
     username = get_jwt_identity()
+    print(f"Fetching info for {username}...")
     connection = get_db_connection()
     if connection:
         cursor = connection.cursor()
@@ -127,8 +133,43 @@ def update_username():
                     query_c = "UPDATE users SET username = %s WHERE username = %s"
                     cursor.execute(query_c, (new_username, current_username,))
                     connection.commit()
+                    
+                    # Logic from logout()
+                    try:
+                        # Try to verify the access token without requiring it
+                        verify_jwt_in_request(optional=True)
+                        access_token = get_jwt()
+                        if access_token:
+                            jti_access = access_token["jti"]
+                            add_to_blocklist(jti_access)
+                    except Exception:
+                        # Token might be expired, so skip blocklisting access token
+                        pass  
+
+                    try:
+                        # Try to verify the refresh token manually if present
+                        verify_jwt_in_request(optional=True, refresh=True)
+                        refresh_token = get_jwt(refresh=True)
+                        if refresh_token:
+                            jti_refresh = refresh_token["jti"]
+                            add_to_blocklist(jti_refresh)
+                    except Exception:
+                        # Token might be expired, so skip blocklisting refresh token
+                        pass  
+                    
+                    response = jsonify({"message": "Logout successful"})
+                    # Unset JWT cookies
+                    unset_jwt_cookies(response) # <- look into this later. Why is the response encoded?
+                    
+                    new_access_token = create_access_token(identity=new_username, fresh=True)
+                    new_refresh_token = create_refresh_token(identity=new_username)
+                    response = jsonify({"message": "Username updated successfully; fresh tokens generated", "access_token": new_access_token})
+                    # Store new tokens in cookies
+                    set_access_cookies(response, new_access_token)
+                    set_refresh_cookies(response, new_refresh_token)
+                    
                     # 200 OK: For a successful request
-                    return jsonify({"message": "Username updated successfully"}), 200
+                    return response, 200
                 else:
                     # 401 Unauthorized: Current password is incorrect
                     return jsonify({"error": "Invalid current password"}), 401

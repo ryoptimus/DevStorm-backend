@@ -160,8 +160,8 @@ def drop_tables():
       print("Finished dropping 'projects' table (if existed).")
         
       # Finally, drop the 'users' table
-      # cursor.execute("DROP TABLE IF EXISTS users;")
-      # print("Finished dropping 'users' table (if existed).")
+      cursor.execute("DROP TABLE IF EXISTS users;")
+      print("Finished dropping 'users' table (if existed).")
         
       # Commit the changes
       connection.commit()
