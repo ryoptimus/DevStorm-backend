@@ -42,7 +42,6 @@ def create_app():
     }, supports_credentials=True)
     
     app.config['FRONTEND_URL'] = os.getenv("FRONTEND")
-    # Add itsdangerous secret key and password salt from .env variables
     app.config['ITSDANGEROUS_SECRET_KEY'] = os.getenv("ITSDANGEROUS_SECRET_KEY")
     app.config['ITSDANGEROUS_PASSWORD_SALT'] = os.getenv("ITSDANGEROUS_PASSWORD_SALT")
     

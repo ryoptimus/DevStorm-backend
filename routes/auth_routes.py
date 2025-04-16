@@ -60,8 +60,6 @@ def register_user():
       
       # Simulate login
       # Generate access and refresh tokens for new user, set cookies
-      # TODO: change identity to be based on email; this breaks when a user updates
-      # their username
       access_token = create_access_token(identity=username, fresh=True)
       refresh_token = create_refresh_token(identity=username)
       response = jsonify({"message": "Registration successful. Confirmation email sent",
@@ -122,7 +120,6 @@ def confirm_email(token):
 
 # LOGIN
 # TODO: add try-except-finally
-# TODO: add login with email capability
 @auth_bp.route('/login', methods=['POST'])
 def login():
   data = request.get_json()
