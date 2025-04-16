@@ -25,6 +25,7 @@ if [[ $1 == "--dev" ]]; then
     export FLASK_ENV=development
     echo "Starting in development mode..."
 fi
-
+# run redis-server in the background
+redis-server &
 # Run Flask application
 flask run 
