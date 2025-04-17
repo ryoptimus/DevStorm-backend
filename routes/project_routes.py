@@ -167,9 +167,10 @@ def create_project():
       query_a = "SELECT * FROM users WHERE username = %s"
       cursor.execute(query_a, (username,))
       user = cursor.fetchone()
-      if user[7] != user[8]:
+      project_count = user[7]
+      if project_count > 5:
         # 409 Conflict: User-side error in request
-        return jsonify({"error": f"User {username} already has project in progress. User must complete existing project before creating a new one"}), 409
+        return jsonify({"error": f"User {username} already has 5 projects in progress. User must complete an existing project before creating a new one"}), 409
       query_b = "INSERT INTO projects (owner, title, summary, steps, languages, date_created) VALUES (%s, %s, %s, %s, %s, %s)"
       # Convert 'steps' list to JSON string for storage
       cursor.execute(query_b, (username, title, summary, json.dumps(steps), json.dumps(languages), date_created))
@@ -249,6 +250,10 @@ def add_project_collaborator(id):
         query_c = "UPDATE projects SET collaborator1 = %s WHERE id = %s"
       
       cursor.execute(query_c, (new_collaborator, id))
+      
+      # Increment new_collaborator's projects count
+      query_d = "UPDATE users SET projects = projects + 1 WHERE username = %s"
+      cursor.execute(query_d, (new_collaborator,))
       
       connection.commit()
       # 200 OK: For a successful request
@@ -345,6 +350,10 @@ def remove_project_collaborator(id):
         return jsonify({"message": f"Collaborator '{collaborator}' was not listed on this project"}), 400
       
       cursor.execute(query_c, (None, id))
+      
+      # Decrement new_collaborator's projects count
+      query_d = "UPDATE users SET projects = projects - 1 WHERE username = %s"
+      cursor.execute(query_d, (collaborator,))
       
       connection.commit()
       # 200 OK: For a successful request

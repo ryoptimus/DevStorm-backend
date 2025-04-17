@@ -25,6 +25,9 @@ if [[ $1 == "--dev" ]]; then
     export FLASK_ENV=development
     echo "Starting in development mode..."
 fi
+
+# TODO: decide what persistence is required, and create redis .conf file
+
 # run redis-server in the background
 redis-server &
 # Run Flask application
