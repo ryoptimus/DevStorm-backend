@@ -234,7 +234,8 @@ def update_password():
     # 500 Internal Server Error: Generic server-side failures
     return jsonify({"error": "Failed to connect to database"}), 500
 
-# DELETE
+# DELETE USER
+# TODO: Test this function's project deletion with respect to collaborators
 @user_bp.route('/user/delete', methods=['DELETE'])
 @jwt_required()
 def delete_user():
@@ -266,33 +267,61 @@ def delete_user():
             if not user:
                 # 404 Not Found: User not found
                 return jsonify({"error": "User not found"}), 404
-            user_project_count = user[5]
+            user_project_count = user[7]
             if user_project_count != 0:
                 query_b = "SELECT * FROM projects WHERE owner = %s"
                 cursor.execute(query_b, (username,))
                 projects = cursor.fetchall()
-                # TODO: check if len(projects) == user_project_count
-                #       if not, get the projects the user has collaborated on
-                #       compile that into the list
+                # Check owned projects first
                 for project in projects:
                     pid = project[0]
-                    project_completed = project[6]
-                    # Delete tasks first, as they are linked to project through pid 
-                    query_c = "DELETE FROM tasks where pid = %s"
-                    cursor.execute(query_c, (pid,))
+                    collaborator1 = project[2]
+                    collaborator2 = project[3]
+                    project_completed = project[8]
+                    # Check collaborators on owned project
+                    collaborators = []
+                    if collaborator1:
+                        collaborators.append(collaborator1)
+                    if collaborator2:
+                        collaborators.append(collaborator2)
+                    for collaborator in collaborators:
+                        # Decrement collaborator's projects count
+                        query_c = "UPDATE users SET projects = projects - 1 WHERE username = %s"
+                        cursor.execute(query_c, (collaborator,))
+                        if project_completed:
+                            # Decrement collaborator's project_completed count
+                            query_d = "UPDATE users SET projects_completed = project_completed - 1 WHERE username = %s"
+                            cursor.execute(query_d, (collaborator,)) 
+                    # Delete tasks before project, as they are linked to project through pid 
+                    query_e = "DELETE FROM tasks where pid = %s"
+                    cursor.execute(query_e, (pid,))
                     # Delete project
-                    query_d = "DELETE FROM projects WHERE id = %s"
-                    cursor.execute(query_d, (pid,))
-                    # Decrement user project count
-                    query_e = "UPDATE users SET projects = projects - 1 WHERE username = %s"
-                    cursor.execute(query_e, (username,))
-                    # If project is a completed project, decrement user project completion count
-                    if project_completed:
-                        query_f = "UPDATE users SET projects_completed = projects_completed - 1 WHERE username = %s"
-                        cursor.execute(query_f, (username,))
+                    query_f = "DELETE FROM projects WHERE id = %s"
+                    cursor.execute(query_f, (pid,))
+                # Next, check if the user has collabed on any projects
+                if user_project_count > len(projects):
+                    # Compile a list of projects where user is listed as a collaborator
+                    collab_projects = []
+                    query_g = "SELECT * FROM projects WHERE collaborator1 = %s"
+                    cursor.execute(query_g, (username,))
+                    collab_projects += cursor.fetchall()
+                    query_h = "SELECT * FROM projects WHERE collaborator2 = %s"
+                    cursor.execute(query_h, (username,))
+                    collab_projects += cursor.fetchall()
+                    # Remove user as collaborator
+                    for collab_project in collab_projects:
+                        pid = collab_project[0]
+                        collaborator1 = collab_project[2]
+                        collaborator2 = collab_project[3]
+                        if collaborator1 == username:
+                            query_i = "UPDATE projects SET collaborator1 = NULL WHERE id = %s"
+                            cursor.execute(query_i, (pid,))
+                        if collaborator2 == username:
+                            query_j = "UPDATE projects SET collaborator2 = NULL WHERE id = %s"
+                            cursor.execute(query_j, (username,))
             # Finally, delete user
-            query_g = "DELETE FROM users WHERE username = %s"
-            cursor.execute(query_g, (username,))
+            query_k = "DELETE FROM users WHERE username = %s"
+            cursor.execute(query_k, (username,))
             # Commit changes
             connection.commit()
             # 200 OK: For a successful request
