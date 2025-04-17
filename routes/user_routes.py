@@ -271,6 +271,9 @@ def delete_user():
                 query_b = "SELECT * FROM projects WHERE owner = %s"
                 cursor.execute(query_b, (username,))
                 projects = cursor.fetchall()
+                # TODO: check if len(projects) == user_project_count
+                #       if not, get the projects the user has collaborated on
+                #       compile that into the list
                 for project in projects:
                     pid = project[0]
                     project_completed = project[6]

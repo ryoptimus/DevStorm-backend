@@ -103,7 +103,7 @@ def get_project(id):
   return jsonify({"error": "Failed to connect to database"}), 500 
 
 # GET ALL PROJECTS for a given user
-#TODO: return both projects that this user owns and those that this user collabs on
+# TODO: return both projects that this user owns and those that this user collabs on
 @project_bp.route('/project/by-user', methods=['GET'])
 @jwt_required()
 def get_user_projects():
