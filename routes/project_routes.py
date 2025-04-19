@@ -395,8 +395,10 @@ def update_project_status(id):
         # 403 Forbidden: Project exists, but does not belong to the user
         return jsonify({"error": f"Project ID {id} does not belong to user {username}"}), 403
       
+      collaborator1 = project[2]
+      collaborator2 = project[3]
       project_status = project[8]
-      print(f"Project ID {id} current status: {project_status}")
+      
       # Prepare queries to update user's project completion count
       if project_status == 0:
         new_status = 1
@@ -408,9 +410,15 @@ def update_project_status(id):
       # Update project status
       query_c = "UPDATE projects SET status = %s WHERE id = %s"
       cursor.execute(query_c, (new_status, id))
+      
       # Update user's project completion count
-      cursor.execute(query_d, (username,))    
-      # Commit both changes together
+      cursor.execute(query_d, (username,))
+      # Update collaborator's/collaborators' completion count(s) accordingly
+      if collaborator1:
+        cursor.execute(query_d, (collaborator1,))
+      if collaborator2:
+        cursor.execute(query_d, (collaborator2,))
+      # Commit all changes together
       connection.commit()
       # 200 OK: For a successful request
       return jsonify({"message": "Project status updated successfully"}), 200
@@ -448,6 +456,12 @@ def delete_project(id):
         # 403 Forbidden: Project exists, but does not belong to the user
         return jsonify({"error": f"Project ID {id} does not belong to user {username}"}), 403
       
+      # Get collaborator(s)
+      collaborator1 = project[2]
+      collaborator2 = project[3]
+      # Get project status (boolean)
+      project_status = project[8]
+      
       # Delete tasks first, as they are linked to project through pid 
       query_c = "DELETE FROM tasks where pid = %s"
       cursor.execute(query_c, (id,))
@@ -455,11 +469,24 @@ def delete_project(id):
       query_d = "DELETE FROM projects WHERE id = %s"
       cursor.execute(query_d, (id,))
       
+      # Update owner's projects count
       query_e = "UPDATE users SET projects = projects - 1 WHERE username = %s"
       cursor.execute(query_e, (username,))
-      if project[8] == 1:
+      # Update collaborator's/collaborators' project count(s)
+      if collaborator1:
+        cursor.execute(query_e, (collaborator1,))
+      if collaborator2:
+        cursor.execute(query_e, (collaborator2,))
+        
+      # If project completed, update owner's completion count
+      if project_status == 1:
         query_f = "UPDATE users SET projects_completed = projects_completed - 1 WHERE username = %s"
         cursor.execute(query_f, (username,))
+        # Update collaborator's/collaborators' completion count(s)
+        if collaborator1:
+          cursor.execute(query_f, (collaborator1,))
+        if collaborator2:
+          cursor.execute(query_f, (collaborator2,))
       # Commit changes
       connection.commit()
       # 200 OK: For a successful request
