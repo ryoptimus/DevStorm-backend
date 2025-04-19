@@ -69,13 +69,13 @@ def get_project(id):
         # 404 Not Found: Project not found
         return jsonify({"error": f"No project found with ID {id}"}), 404
       
-      # Structure query, retrieve project
-      query_b = "SELECT * FROM projects WHERE id = %s AND owner = %s"
-      cursor.execute(query_b, (id, username))
-      project = cursor.fetchone()
-      if not project:
-        # 403 Forbidden: Project exists, but does not belong to the user
-        return jsonify({"error": f"Project ID {id} does not belong to user {username}"}), 403
+      # Get project team (owner, collaborator(s))
+      proj_owner = project[1]
+      proj_collab1 = project[2]
+      proj_collab2 = project[3]
+      if username not in [proj_owner, proj_collab1, proj_collab2]:
+        # 403 Forbidden: Project exists, but user is not its owner or either of its collaborators
+        return jsonify({"error": f"Project ID {id} is not associated with user {username}"}), 403
 
       project_data = {
         "id": project[0], 
@@ -103,7 +103,6 @@ def get_project(id):
   return jsonify({"error": "Failed to connect to database"}), 500 
 
 # GET ALL PROJECTS for a given user
-# TODO: return both projects that this user owns and those that this user collabs on
 @project_bp.route('/project/by-user', methods=['GET'])
 @jwt_required()
 def get_user_projects():
@@ -112,10 +111,19 @@ def get_user_projects():
     if connection: 
       try:
         cursor = connection.cursor()
-        # Structure query, retrieve user
-        query = "SELECT * FROM projects WHERE owner = %s"
-        cursor.execute(query, (username,))
-        projects = cursor.fetchall()
+        projects = []
+        # Structure query, retrieve user-owned projects
+        query_a = "SELECT * FROM projects WHERE owner = %s"
+        cursor.execute(query_a, (username,))
+        projects += cursor.fetchall()
+        # Get projects where user is a collaborator
+        query_b = "SELECT * FROM projects WHERE collaborator1 = %s"
+        cursor.execute(query_b, (username,))
+        projects += cursor.fetchall()
+        query_c = "SELECT * FROM projects WHERE collaborator2 = %s"
+        cursor.execute(query_c, (username,))
+        projects += cursor.fetchall()
+        
         if projects:
           projects_list = [
             {
