@@ -32,6 +32,7 @@ def get_all_users():
                 "email": user[1],
                 "username": user[2], 
                 "password": user[3],
+                "bio": user[10],
                 "confirmed": user[4],
                 "confirmed_on": user[5],
                 "membership": user[6],
@@ -76,6 +77,7 @@ def get_user():
                     "email": user[1],
                     "username": user[2], 
                     "password": user[3],
+                    "bio": user[10],
                     "confirmed": user[4],
                     "confirmed_on": user[5],
                     "membership": user[6],
@@ -224,6 +226,70 @@ def update_password():
             else:
                 # 404 Not Found: User not found
                 return jsonify({"error": "User not found"}), 404
+        except mysql.connector.Error as e:
+            # 500 Internal Server Error
+            return jsonify({"error": f"Database error: {e}"}), 500
+        finally:
+            # Close resources
+            cursor.close()
+            connection.close()
+    # 500 Internal Server Error: Generic server-side failures
+    return jsonify({"error": "Failed to connect to database"}), 500
+
+# CREATE and UPDATE endpoint for user bio
+@user_bp.route('/user/set-bio', methods=['PUT'])
+@jwt_required()
+def set_bio():
+    username = get_jwt_identity()
+    data = request.get_json()
+    bio = data['data']
+    connection = get_db_connection()
+    if connection:
+        try:
+            cursor = connection.cursor()
+            query_a = "SELECT * FROM users WHERE username = %s"
+            cursor.execute(query_a, (username,))
+            user = cursor.fetchone()
+            if not user:
+                # 404 Not Found
+                return jsonify({"error": f"User {username} not found"}), 404
+            
+            query_b = "UPDATE users SET bio = %s WHERE username = %s"
+            cursor.execute(query_b, (bio, username))
+            connection.commit()
+            # 200 OK: For a successful request
+            return jsonify({"message": "User bio updated successfully"}), 200
+        except mysql.connector.Error as e:
+            # 500 Internal Server Error
+            return jsonify({"error": f"Database error: {e}"}), 500
+        finally:
+            # Close resources
+            cursor.close()
+            connection.close()
+    # 500 Internal Server Error: Generic server-side failures
+    return jsonify({"error": "Failed to connect to database"}), 500
+    
+# DELETE endpoint for user bio
+@user_bp.route('/user/delete-bio', methods=['DELETE'])
+@jwt_required()
+def delete_bio():
+    username = get_jwt_identity()
+    connection = get_db_connection()
+    if connection:
+        try:
+            cursor = connection.cursor()
+            query_a = "SELECT * FROM users WHERE username = %s"
+            cursor.execute(query_a, (username,))
+            user = cursor.fetchone()
+            if not user:
+                # 404 Not Found
+                return jsonify({"error": f"User {username} not found"}), 404
+            
+            query_b = "UPDATE users SET bio = NULL WHERE username = %s"
+            cursor.execute(query_b, (username,))
+            connection.commit()
+            # 200 OK: For a successful request
+            return jsonify({"message": "User bio updated successfully"}), 200
         except mysql.connector.Error as e:
             # 500 Internal Server Error
             return jsonify({"error": f"Database error: {e}"}), 500
