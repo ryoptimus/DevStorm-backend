@@ -9,6 +9,7 @@ from flask_jwt_extended import (
 )
 from mysql.connector import IntegrityError
 from datetime import datetime, timedelta
+from random import randrange
 from app import bcrypt, jwt
 from db import get_db_connection
 from helpers import (
@@ -46,8 +47,9 @@ def register_user():
     try:
       cursor = connection.cursor()
       date_joined = datetime.now()
-      query = "INSERT INTO users (email, username, password, membership, date_joined) VALUES (%s, %s, %s, %s, %s)"
-      cursor.execute(query, (email, username, hashed_password, "STANDARD", date_joined))
+      avatar = randrange(1, 5)  # Get random number 1-4
+      query = "INSERT INTO users (email, username, password, membership, date_joined, avatar) VALUES (%s, %s, %s, %s, %s, %s)"
+      cursor.execute(query, (email, username, hashed_password, "STANDARD", date_joined, avatar))
       # Commit changes
       connection.commit()
       

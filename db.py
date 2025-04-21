@@ -52,7 +52,8 @@ def create_users_table():
                 projects INT DEFAULT 0,
                 projects_completed INT DEFAULT 0,
                 date_joined DATETIME,
-                bio VARCHAR(500) DEFAULT NULL
+                bio VARCHAR(500) DEFAULT NULL,
+                avatar INT
             );
         """)
       
