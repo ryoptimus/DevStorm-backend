@@ -270,37 +270,6 @@ def set_bio():
             connection.close()
     # 500 Internal Server Error: Generic server-side failures
     return jsonify({"error": "Failed to connect to database"}), 500
-
-@user_bp.route('/user/update-avatar', methods=['PUT'])
-@jwt_required()
-def update_avatar():
-    username = get_jwt_identity()
-    data = request.get_json()
-    avatar = data['avatar']
-    connection = get_db_connection()
-    if connection:
-        try:
-            cursor = connection.cursor()
-            query_a = "SELECT * FROM users WHERE username = %s"
-            cursor.execute(query_a, (username,))
-            user = cursor.fetchone()
-            if not user:
-                # 404 Not Found
-                return jsonify({"error": f"User {username} not found"}), 404
-            query_b = "UPDATE users SET avatar = %s WHERE username = %s"
-            cursor.execute(query_b, (avatar, username))
-            connection.commit()
-            # 200 OK: For a successful request
-            return jsonify({"message": "User avatar updated successfully"}), 200
-        except mysql.connector.Error as e:
-            # 500 Internal Server Error
-            return jsonify({"error": f"Database error: {e}"}), 500
-        finally:
-            # Close resources
-            cursor.close()
-            connection.close()
-    # 500 Internal Server Error: Generic server-side failures
-    return jsonify({"error": "Failed to connect to database"}), 500
     
 # DELETE endpoint for user bio
 @user_bp.route('/user/delete-bio', methods=['DELETE'])
@@ -323,6 +292,37 @@ def delete_bio():
             connection.commit()
             # 200 OK: For a successful request
             return jsonify({"message": "User bio updated successfully"}), 200
+        except mysql.connector.Error as e:
+            # 500 Internal Server Error
+            return jsonify({"error": f"Database error: {e}"}), 500
+        finally:
+            # Close resources
+            cursor.close()
+            connection.close()
+    # 500 Internal Server Error: Generic server-side failures
+    return jsonify({"error": "Failed to connect to database"}), 500
+
+@user_bp.route('/user/update-avatar', methods=['PUT'])
+@jwt_required()
+def update_avatar():
+    username = get_jwt_identity()
+    data = request.get_json()
+    avatar = data['avatar']
+    connection = get_db_connection()
+    if connection:
+        try:
+            cursor = connection.cursor()
+            query_a = "SELECT * FROM users WHERE username = %s"
+            cursor.execute(query_a, (username,))
+            user = cursor.fetchone()
+            if not user:
+                # 404 Not Found
+                return jsonify({"error": f"User {username} not found"}), 404
+            query_b = "UPDATE users SET avatar = %s WHERE username = %s"
+            cursor.execute(query_b, (avatar, username))
+            connection.commit()
+            # 200 OK: For a successful request
+            return jsonify({"message": "User avatar updated successfully"}), 200
         except mysql.connector.Error as e:
             # 500 Internal Server Error
             return jsonify({"error": f"Database error: {e}"}), 500

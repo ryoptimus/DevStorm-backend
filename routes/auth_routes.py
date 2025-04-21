@@ -156,7 +156,6 @@ def login():
         # Store tokens in cookies
         set_access_cookies(response, access_token)
         set_refresh_cookies(response, refresh_token)
-        # print(f"Login data:\n\tuser: {username}\n\taccess_token: {access_token}\n\trefresh_token: {refresh_token}")
         # 200 OK: For a successful request
         return response, 200
       else:
